@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 
 	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
@@ -111,17 +112,36 @@ func runInstall(cmd *cobra.Command, _ []string) error {
 		st.Profile = installOpts.profile
 	}
 
+	// Root check: apply mode needs root (apt-get install writes /var/lib/dpkg,
+	// /usr/local/bin, /etc/apt/...). Skipped on dry-run because those paths
+	// aren't touched.
+	if !effectiveDry && os.Geteuid() != 0 {
+		return errors.New("apply mode needs root privileges — re-run with sudo (or pass --dry-run to preview)")
+	}
+
 	// Provider registry.
 	reg := provider.NewRegistry()
 	reg.Register(provider.NewAPT())
-	// Phase 2 follow-up: register flatpak, binary_release, config, shell,
-	// composer_global, npm_global as they land.
+	reg.Register(provider.NewShell())
+	reg.Register(provider.NewConfig())
+	reg.Register(provider.NewBinaryRelease())
+	reg.Register(provider.NewComposerGlobal())
+	// Phase 2 follow-up: flatpak, npm_global when we need them.
+
+	// Repo bootstrapper: only used in apply mode since it writes to /etc/apt.
+	var bootstrapper *runner.RepoBootstrapper
+	if !effectiveDry {
+		bootstrapper = runner.NewRepoBootstrapper(m.Repos, provider.ExecRunner(), d)
+		bootstrapper.Out = out
+	}
 
 	r := &runner.Runner{
-		Manifest: m,
-		Registry: reg,
-		State:    st,
-		Out:      out,
+		Manifest:     m,
+		Registry:     reg,
+		State:        st,
+		Bootstrapper: bootstrapper,
+		Env:          runner.Env{Distro: d, Desktop: system.DetectDesktop()},
+		Out:          out,
 		StateFn: func(s *state.State) error {
 			return state.Save("", s)
 		},
