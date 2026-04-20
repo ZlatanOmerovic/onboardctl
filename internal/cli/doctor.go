@@ -253,8 +253,6 @@ func checkBinaryOnPath() DoctorCheck {
 
 // ---- Rendering ------------------------------------------------------------
 
-var useDoctorColor = os.Getenv("NO_COLOR") == ""
-
 const (
 	ansiReset  = "\x1b[0m"
 	ansiGreen  = "\x1b[32m"
@@ -265,7 +263,7 @@ const (
 
 func formatCheck(c DoctorCheck) string {
 	glyph, color := checkStyle(c.Status)
-	if useDoctorColor {
+	if ColorEnabled() {
 		return fmt.Sprintf("  %s%s%s %-22s %s", color, glyph, ansiReset, c.Name, c.Message)
 	}
 	return fmt.Sprintf("  %s %-22s %s", glyph, c.Name, c.Message)

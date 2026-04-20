@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -40,13 +41,13 @@ func TestCheckStyleCoversAllStatuses(t *testing.T) {
 }
 
 func TestFormatCheckHonoursNoColor(t *testing.T) {
-	// Temporarily override the package-level switch.
-	orig := useDoctorColor
-	defer func() { useDoctorColor = orig }()
+	// Temporarily override the global flag state.
+	orig := noColorFlag
+	defer func() { noColorFlag = orig }()
 
 	c := DoctorCheck{Name: "Distro", Status: CheckOK, Message: "trixie"}
 
-	useDoctorColor = false
+	noColorFlag = true
 	plain := formatCheck(c)
 	if strings.Contains(plain, "\x1b[") {
 		t.Errorf("plain output contains ANSI escape: %q", plain)
@@ -55,7 +56,16 @@ func TestFormatCheckHonoursNoColor(t *testing.T) {
 		t.Errorf("plain output missing content: %q", plain)
 	}
 
-	useDoctorColor = true
+	noColorFlag = false
+	// Ensure NO_COLOR env isn't forcing plain output for this assertion.
+	origEnv, hadEnv := os.LookupEnv("NO_COLOR")
+	_ = os.Unsetenv("NO_COLOR")
+	defer func() {
+		if hadEnv {
+			os.Setenv("NO_COLOR", origEnv)
+		}
+	}()
+
 	coloured := formatCheck(c)
 	if !strings.Contains(coloured, "\x1b[") {
 		t.Errorf("coloured output missing ANSI escape: %q", coloured)

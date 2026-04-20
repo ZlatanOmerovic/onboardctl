@@ -47,9 +47,9 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 	fmt.Fprintf(tw, "  ID\t%s\n", d.ID)
 	fmt.Fprintf(tw, "  Family\t%s\n", d.Family)
 	if !d.InDebianFamily() {
-		fmt.Fprintf(tw, "  Supported\t\u001b[31mno\u001b[0m (Debian-family only)\n")
+		fmt.Fprintf(tw, "  Supported\t%s (Debian-family only)\n", colorise("no", ansiRed))
 	} else {
-		fmt.Fprintf(tw, "  Supported\t\u001b[32myes\u001b[0m\n")
+		fmt.Fprintf(tw, "  Supported\t%s\n", colorise("yes", ansiGreen))
 	}
 	fmt.Fprintf(tw, "  Arch\t%s\n", d.Arch)
 	fmt.Fprintf(tw, "  Desktop\t%s\n", de.String())

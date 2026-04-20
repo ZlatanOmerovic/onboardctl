@@ -19,6 +19,17 @@ fullstack-web, devops, polyglot-dev, everything); and tracks state across
 runs so re-running is a diff, not a reinstall.`,
 	SilenceUsage:  true,
 	SilenceErrors: false,
+	// PersistentPreRun fires before any subcommand's RunE. It converts
+	// the declared --verbose / --no-color flags into process-wide state
+	// (lipgloss colour profile, package-level getters).
+	PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+		configureColors()
+	},
+}
+
+func init() {
+	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "print extra progress detail where applicable")
+	rootCmd.PersistentFlags().BoolVar(&noColorFlag, "no-color", false, "disable ANSI colour output (honoured in addition to NO_COLOR env)")
 }
 
 // Execute runs the CLI. It returns the error cobra produced (if any) so
