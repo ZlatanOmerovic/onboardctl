@@ -68,8 +68,19 @@ func (rb *RepoBootstrapper) Ensure(ctx context.Context, name string, env Env) (b
 	keyPath := filepath.Join(rb.KeyDir, "onboardctl-"+name+".gpg")
 	srcPath := filepath.Join(rb.SrcDir, "onboardctl-"+name+".list")
 
-	// Already set up?
+	// Already set up by us?
 	if fileExists(keyPath) && fileExists(srcPath) {
+		rb.done[name] = true
+		return false, nil
+	}
+
+	// Before writing new files, check whether the user already has an
+	// equivalent repo configured under /etc/apt/sources.list.d/. This
+	// prevents the "Conflicting values set for option Signed-By"
+	// error apt raises when two sources reference the same URL with
+	// different keyring paths, and respects user-managed setups.
+	if existing, ok := rb.findExistingRepoFor(repo); ok {
+		rb.logf("repo %s: skipping — user-managed source at %s already covers it\n", name, existing)
 		rb.done[name] = true
 		return false, nil
 	}
@@ -154,4 +165,58 @@ func (rb *RepoBootstrapper) logf(format string, a ...any) {
 func fileExists(p string) bool {
 	_, err := os.Stat(p)
 	return err == nil
+}
+
+// findExistingRepoFor walks SrcDir looking for any .list or .sources
+// file (other than our own onboardctl-* files) whose contents contain
+// the URL this repo would install. Returns (path, true) on match.
+//
+// We only look at the URL, not at every deb-line detail, because the
+// goal is "don't duplicate" — a match here means apt already knows
+// about the same upstream under its own management. Slight URL
+// variations (trailing slash) are normalised by extractRepoURL.
+func (rb *RepoBootstrapper) findExistingRepoFor(repo manifest.Repo) (string, bool) {
+	url := extractRepoURL(repo.Source)
+	if url == "" {
+		return "", false
+	}
+	entries, err := os.ReadDir(rb.SrcDir)
+	if err != nil {
+		return "", false
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		// Skip files we wrote ourselves — they're handled by the
+		// fileExists check at the top of Ensure.
+		if strings.HasPrefix(name, "onboardctl-") {
+			continue
+		}
+		if !strings.HasSuffix(name, ".list") && !strings.HasSuffix(name, ".sources") {
+			continue
+		}
+		p := filepath.Join(rb.SrcDir, name)
+		data, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		if strings.Contains(string(data), url) {
+			return p, true
+		}
+	}
+	return "", false
+}
+
+// extractRepoURL pulls the first http(s) token out of a deb line.
+// Trailing slashes are trimmed so "https://example.com/path" and
+// "https://example.com/path/" compare as equal substrings.
+func extractRepoURL(source string) string {
+	for _, tok := range strings.Fields(source) {
+		if strings.HasPrefix(tok, "http://") || strings.HasPrefix(tok, "https://") {
+			return strings.TrimRight(tok, "/")
+		}
+	}
+	return ""
 }
