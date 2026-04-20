@@ -25,6 +25,7 @@ var installOpts struct {
 	skip       []string
 	dryRun     bool
 	assumeYes  bool
+	swapDrift  bool
 }
 
 var installCmd = &cobra.Command{
@@ -55,6 +56,7 @@ func init() {
 	installCmd.Flags().StringSliceVar(&installOpts.skip, "skip", nil, "item IDs to omit from the plan")
 	installCmd.Flags().BoolVar(&installOpts.dryRun, "dry-run", false, "print the plan; don't install")
 	installCmd.Flags().BoolVarP(&installOpts.assumeYes, "yes", "y", false, "apply changes (without --yes and without --dry-run, install defaults to dry-run)")
+	installCmd.Flags().BoolVar(&installOpts.swapDrift, "swap-drift", false, "replace foreign-installed versions (e.g. snap) with the manifest-preferred one")
 	rootCmd.AddCommand(installCmd)
 }
 
@@ -169,7 +171,7 @@ func runInstall(cmd *cobra.Command, _ []string) error {
 		},
 	}
 
-	opts := runner.Options{DryRun: effectiveDry, Profile: installOpts.profile}
+	opts := runner.Options{DryRun: effectiveDry, Profile: installOpts.profile, SwapDrift: installOpts.swapDrift}
 
 	fmt.Fprintln(out, "Plan:")
 	sum, err := r.Run(context.Background(), sel, opts)

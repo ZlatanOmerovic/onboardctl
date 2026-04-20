@@ -44,6 +44,13 @@ type Runner struct {
 type Options struct {
 	DryRun  bool
 	Profile string // recorded in state; informational
+
+	// SwapDrift, when true, instructs the runner to actively replace
+	// items it detects as drift (Installed=true via a provider kind
+	// other than the manifest's preferred one). Today only the apt←snap
+	// swap is implemented; manifest preferring apt + system-snap is
+	// resolved by `snap remove <pkg>` followed by the normal apt install.
+	SwapDrift bool
 }
 
 // Summary is what Run returns so the CLI can print a final report.
@@ -181,6 +188,30 @@ func (r *Runner) Run(ctx context.Context, sel Selection, opts Options) (*Summary
 	return sum, nil
 }
 
+// handleDriftSwap removes a foreign-installed version of an item so the
+// runner's next call to impl.Install installs the manifest-preferred one.
+//
+// Today only the apt←snap case is wired. Manifest.KindAPT + ProviderUsed=snap
+// triggers `snap remove <pkg>`; other pairs are no-ops (returns handled=false)
+// so the caller can fall back to the already-installed path.
+func (r *Runner) handleDriftSwap(ctx context.Context, id string, it manifest.Item,
+	p manifest.Provider, impl provider.Provider, st provider.State,
+	_ Options) (handled bool, err error) {
+
+	if p.Type == manifest.KindAPT && st.ProviderUsed == "snap" {
+		apt, ok := impl.(*provider.APT)
+		if !ok {
+			return false, nil // shouldn't happen, but play safe
+		}
+		r.logf("  ~ %-20s drift swap: removing snap before apt install\n", id)
+		if err := apt.RemoveSnapCounterpart(ctx, p.Package); err != nil {
+			return false, fmt.Errorf("swap drift for %q: %w", it.Name, err)
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
 // prepareItem returns copies of the item and provider ready for dispatch.
 // If Values supplies input for this item, {field} tokens are substituted
 // in provider.Apply/Check and the copy's Input is cleared so the provider
@@ -230,14 +261,37 @@ func (r *Runner) handleItem(ctx context.Context, id string, it manifest.Item,
 		return fmt.Errorf("check: %w", err)
 	}
 	if st.Installed {
-		sum.AlreadyHad = append(sum.AlreadyHad, id)
-		r.logf("  = %-20s already installed (%s)\n", id, firstNonEmpty(st.Version, "present"))
-		r.emit(ProgressEvent{
-			Kind: ProgressAlready, ItemID: id, Name: it.Name,
-			Version: firstNonEmpty(st.Version, "present"),
-			Total:   total, Index: index,
-		})
-		return nil
+		// Drift swap: installed, but via a different provider kind than the
+		// manifest prefers. When opts.SwapDrift is set AND we know how to
+		// swap this pair, remove the foreign version and fall through to
+		// the normal install below. Otherwise, treat as already-installed.
+		if opts.SwapDrift && st.ProviderUsed != "" && st.ProviderUsed != p.Type {
+			handled, swapErr := r.handleDriftSwap(ctx, id, it, p, impl, st, opts)
+			if swapErr != nil {
+				return swapErr
+			}
+			if !handled {
+				sum.AlreadyHad = append(sum.AlreadyHad, id)
+				r.logf("  = %-20s already installed (%s) — drift not swappable\n",
+					id, firstNonEmpty(st.Version, "present"))
+				r.emit(ProgressEvent{
+					Kind: ProgressAlready, ItemID: id, Name: it.Name,
+					Version: firstNonEmpty(st.Version, "present"),
+					Total:   total, Index: index,
+				})
+				return nil
+			}
+			// Fall through to install.
+		} else {
+			sum.AlreadyHad = append(sum.AlreadyHad, id)
+			r.logf("  = %-20s already installed (%s)\n", id, firstNonEmpty(st.Version, "present"))
+			r.emit(ProgressEvent{
+				Kind: ProgressAlready, ItemID: id, Name: it.Name,
+				Version: firstNonEmpty(st.Version, "present"),
+				Total:   total, Index: index,
+			})
+			return nil
+		}
 	}
 
 	if opts.DryRun {

@@ -109,6 +109,23 @@ func (a *APT) Install(ctx context.Context, item manifest.Item, p manifest.Provid
 	return nil
 }
 
+// RemoveSnapCounterpart removes the snap whose name matches pkg.
+// Intended for --swap-drift: the manifest wants the apt version of a
+// package, but the machine currently has the snap equivalent. The
+// runner calls this before the normal apt install. Errors are
+// returned verbatim so callers can decide whether a missing snap
+// (already not installed) counts as success or failure.
+func (a *APT) RemoveSnapCounterpart(ctx context.Context, pkg string) error {
+	if pkg == "" {
+		return errors.New("apt provider: pkg is required")
+	}
+	out, err := a.runner.Run(ctx, "snap", "remove", pkg)
+	if err != nil {
+		return fmt.Errorf("snap remove %s: %w\n%s", pkg, err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 // parseDpkgStatus splits "ii 1.7.1-6" into status "ii" and version "1.7.1-6".
 // Handles lines like "un " (unknown) and variants with trailing whitespace.
 func parseDpkgStatus(s string) (status, version string) {
