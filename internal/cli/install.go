@@ -16,13 +16,14 @@ import (
 )
 
 var installOpts struct {
-	extras   string
-	profile  string
-	bundle   string
-	items    []string
-	skip     []string
-	dryRun   bool
-	assumeYes bool
+	extras     string
+	profile    string
+	bundle     string
+	items      []string
+	fromExport string
+	skip       []string
+	dryRun     bool
+	assumeYes  bool
 }
 
 var installCmd = &cobra.Command{
@@ -49,6 +50,7 @@ func init() {
 	installCmd.Flags().StringVar(&installOpts.profile, "profile", "", "profile to install (e.g. essentials, fullstack-web)")
 	installCmd.Flags().StringVar(&installOpts.bundle, "bundle", "", "single bundle to install")
 	installCmd.Flags().StringSliceVar(&installOpts.items, "items", nil, "explicit item IDs (comma-separated)")
+	installCmd.Flags().StringVar(&installOpts.fromExport, "from-export", "", "replay items from a file produced by 'onboardctl export'")
 	installCmd.Flags().StringSliceVar(&installOpts.skip, "skip", nil, "item IDs to omit from the plan")
 	installCmd.Flags().BoolVar(&installOpts.dryRun, "dry-run", false, "print the plan; don't install")
 	installCmd.Flags().BoolVarP(&installOpts.assumeYes, "yes", "y", false, "apply changes (without --yes and without --dry-run, install defaults to dry-run)")
@@ -63,11 +65,21 @@ func runInstall(cmd *cobra.Command, _ []string) error {
 	if installOpts.profile != "" { n++ }
 	if installOpts.bundle != "" { n++ }
 	if len(installOpts.items) > 0 { n++ }
+	if installOpts.fromExport != "" { n++ }
 	if n == 0 {
-		return errors.New("must pass one of --profile / --bundle / --items")
+		return errors.New("must pass one of --profile / --bundle / --items / --from-export")
 	}
 	if n > 1 {
-		return errors.New("pass only one of --profile / --bundle / --items")
+		return errors.New("pass only one of --profile / --bundle / --items / --from-export")
+	}
+
+	// --from-export populates items by parsing the file.
+	if installOpts.fromExport != "" {
+		ids, err := parseExportFile(installOpts.fromExport)
+		if err != nil {
+			return fmt.Errorf("read %s: %w", installOpts.fromExport, err)
+		}
+		installOpts.items = ids
 	}
 
 	// Safety net: if neither --dry-run nor --yes is set, default to dry-run.
