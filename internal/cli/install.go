@@ -138,7 +138,8 @@ func runInstall(cmd *cobra.Command, _ []string) error {
 	reg.Register(provider.NewConfig())
 	reg.Register(provider.NewBinaryRelease())
 	reg.Register(provider.NewComposerGlobal())
-	// Phase 2 follow-up: flatpak, npm_global when we need them.
+	reg.Register(provider.NewFlatpak())
+	// Remaining: npm_global, added when an item requires it.
 
 	// Repo bootstrapper: only used in apply mode since it writes to /etc/apt.
 	var bootstrapper *runner.RepoBootstrapper
