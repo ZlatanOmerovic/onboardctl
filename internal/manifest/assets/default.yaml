@@ -101,7 +101,21 @@ items:
 
   # ------------------------------ terminal-stack ----------------------------
   kitty:         { name: Kitty terminal, bundle: terminal-stack, description: "GPU-accelerated terminal with native Wayland.", providers: [{ type: apt, package: kitty }] }
+  alacritty:     { name: Alacritty,    bundle: terminal-stack, description: "Leanest GPU-accelerated terminal.", providers: [{ type: apt, package: alacritty }] }
   zsh:           { name: Zsh shell,    bundle: terminal-stack, description: "The z shell.",                 providers: [{ type: apt, package: zsh }] }
+  fish:          { name: Fish shell,   bundle: terminal-stack, description: "User-friendly shell with smart autosuggestions.", providers: [{ type: apt, package: fish }] }
+
+  starship:
+    name: Starship prompt
+    bundle: terminal-stack
+    description: "Minimal, blazing-fast, cross-shell prompt."
+    providers:
+      - type: shell
+        apply:
+          - "curl -fsSL https://starship.rs/install.sh | sh -s -- -y -b /usr/local/bin"
+        check: "command -v starship >/dev/null 2>&1"
+    post_install:
+      - "Enable in your shell rc:   eval \"$(starship init bash)\"  # or zsh / fish"
 
   # ------------------------------ media -------------------------------------
   vlc:           { name: VLC media player, bundle: media, description: "Plays essentially any audio or video file.", providers: [{ type: apt, package: vlc }] }
@@ -346,8 +360,8 @@ bundles:
 
   terminal-stack:
     name: Terminal stack
-    description: "Modern terminal and shell."
-    items: [kitty, zsh]
+    description: "Modern terminal emulators, shells, and prompt."
+    items: [kitty, alacritty, zsh, fish, starship]
 
   media:
     name: Media
