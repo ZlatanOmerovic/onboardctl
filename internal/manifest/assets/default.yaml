@@ -3,12 +3,23 @@
 # This is the curated starting set shipped inside the binary. User additions
 # go in ~/.config/onboardctl/extras.yaml and merge on top of this file.
 #
-# Phase 1 intentionally ships a small but representative slice: enough to
-# prove the schema exercises every field, not enough to cover the real app
-# catalogue (Phase 2 expands it).
+# Conventions:
+#   - Item IDs are lowercase, hyphenated; mirror the apt package name where possible.
+#   - Bundle IDs describe intent (base-system, runtime-php, dev-tools) not
+#     alphabet order.
+#   - Profiles declare only the bundles they own; `extends` chains inheritance
+#     so fullstack-web = essentials + more, everything = fullstack-web + more.
+#
+# Phase-2 providers will consume this file. Anything requiring custom repo
+# bootstrap beyond a single apt source + keyring (e.g., the Microsoft
+# packages-microsoft-prod .deb that .NET needs) is intentionally left out
+# for now — those arrive in Phase 2 once we have richer Repo semantics.
 
 version: 1
 
+###############################################################################
+# Repositories
+###############################################################################
 repos:
   sury_php:
     kind: apt
@@ -18,65 +29,279 @@ repos:
     when:
       distro_family: [debian]
 
-items:
-  # -------- base-system --------
-  jq:
-    name: jq
-    description: Command-line JSON processor.
-    bundle: base-system
-    providers:
-      - type: apt
-        package: jq
+  nodesource:
+    kind: apt
+    keyring: https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
+    keyring_dearmor: true
+    source: "deb [arch={arch} signed-by={keyring}] https://deb.nodesource.com/node_24.x nodistro main"
+    when:
+      distro_family: [debian]
 
+  github_cli:
+    kind: apt
+    keyring: https://cli.github.com/packages/githubcli-archive-keyring.gpg
+    keyring_dearmor: false
+    source: "deb [arch={arch} signed-by={keyring}] https://cli.github.com/packages stable main"
+    when:
+      distro_family: [debian]
+
+  kubernetes:
+    kind: apt
+    keyring: https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key
+    keyring_dearmor: true
+    source: "deb [signed-by={keyring}] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /"
+    when:
+      distro_family: [debian]
+
+  anydesk:
+    kind: apt
+    keyring: https://keys.anydesk.com/repos/DEB-GPG-KEY
+    keyring_dearmor: true
+    source: "deb [signed-by={keyring}] http://deb.anydesk.com/ all main"
+    when:
+      distro_family: [debian]
+
+  microsoft_vscode:
+    kind: apt
+    keyring: https://packages.microsoft.com/keys/microsoft.asc
+    keyring_dearmor: true
+    source: "deb [arch=amd64,arm64,armhf signed-by={keyring}] https://packages.microsoft.com/repos/code stable main"
+    when:
+      distro_family: [debian]
+
+###############################################################################
+# Items
+###############################################################################
+items:
+
+  # ------------------------------ base-system -------------------------------
+  jq:            { name: jq,          bundle: base-system, description: "Command-line JSON processor.",    providers: [{ type: apt, package: jq }] }
   git-lfs:
     name: Git LFS
-    description: Large-file support for git.
     bundle: base-system
+    description: "Large-file support for git."
+    providers: [{ type: apt, package: git-lfs }]
+    post_install: ["Run 'git lfs install' once per clone that uses LFS."]
+  fastfetch:     { name: fastfetch,    bundle: base-system, description: "Fast system-info tool; modern neofetch replacement.", providers: [{ type: apt, package: fastfetch }] }
+  tmux:          { name: tmux,         bundle: base-system, description: "Terminal multiplexer.",           providers: [{ type: apt, package: tmux }] }
+  mkcert:        { name: mkcert,       bundle: base-system, description: "Local HTTPS certs (laravel.test-style).", providers: [{ type: apt, package: mkcert }] }
+  ffmpeg:        { name: ffmpeg,       bundle: base-system, description: "Audio/video swiss-army knife.",   providers: [{ type: apt, package: ffmpeg }] }
+  btop:          { name: btop,         bundle: base-system, description: "Prettier htop with GPU + disk IO.", providers: [{ type: apt, package: btop }] }
+  ncdu:          { name: ncdu,         bundle: base-system, description: "Interactive disk-usage browser.", providers: [{ type: apt, package: ncdu }] }
+  tealdeer:      { name: tldr (tealdeer), bundle: base-system, description: "tldr pages — community cheat sheets.", providers: [{ type: apt, package: tealdeer }] }
+  direnv:        { name: direnv,       bundle: base-system, description: "Per-directory env loading.",      providers: [{ type: apt, package: direnv }] }
+  shellcheck:    { name: shellcheck,   bundle: base-system, description: "Shell-script linter.",            providers: [{ type: apt, package: shellcheck }] }
+  mosh:          { name: mosh,         bundle: base-system, description: "SSH that survives network changes.", providers: [{ type: apt, package: mosh }] }
+  flameshot:     { name: flameshot,    bundle: base-system, description: "Screenshot with annotations.",    providers: [{ type: apt, package: flameshot }] }
+  duf:           { name: duf,          bundle: base-system, description: "Better 'df' with colored table.", providers: [{ type: apt, package: duf }] }
+  apt-file:      { name: apt-file,     bundle: base-system, description: "Find which apt package owns a file.", providers: [{ type: apt, package: apt-file }] }
+  mat2:          { name: mat2,         bundle: base-system, description: "Metadata (EXIF etc.) removal tool.", providers: [{ type: apt, package: mat2 }] }
+  httpie:        { name: httpie,       bundle: base-system, description: "Friendlier HTTP client.",         providers: [{ type: apt, package: httpie }] }
+  git-delta:     { name: git-delta,    bundle: base-system, description: "Syntax-highlighted git diff pager.", providers: [{ type: apt, package: git-delta }] }
+
+  # ------------------------------ terminal-stack ----------------------------
+  kitty:         { name: Kitty terminal, bundle: terminal-stack, description: "GPU-accelerated terminal with native Wayland.", providers: [{ type: apt, package: kitty }] }
+  zsh:           { name: Zsh shell,    bundle: terminal-stack, description: "The z shell.",                 providers: [{ type: apt, package: zsh }] }
+
+  # ------------------------------ media -------------------------------------
+  vlc:           { name: VLC media player, bundle: media, description: "Plays essentially any audio or video file.", providers: [{ type: apt, package: vlc }] }
+
+  # ------------------------------ browsers ----------------------------------
+  chromium:      { name: Chromium,     bundle: browsers, description: "Open-source browser (Debian builds it as a real .deb, unlike Ubuntu where it is snap-only).", providers: [{ type: apt, package: chromium, when: { distro_id: [debian] } }] }
+  google-chrome: { name: Google Chrome, bundle: browsers, description: "Chrome stable from Google's repo.", providers: [{ type: apt, package: google-chrome-stable }] }
+
+  # ------------------------------ messengers --------------------------------
+  viber:
+    name: Viber
+    bundle: messengers
+    description: "Viber desktop client (vendor .deb)."
+    providers:
+      - type: shell
+        apply:
+          - "curl -fsSL https://download.cdn.viber.com/cdn/desktop/Linux/viber.deb -o /tmp/viber.deb"
+          - "apt-get install -y /tmp/viber.deb"
+          - "rm -f /tmp/viber.deb"
+        check: "dpkg -s viber >/dev/null 2>&1"
+
+  # ------------------------------ remote-access -----------------------------
+  anydesk:
+    name: AnyDesk
+    bundle: remote-access
+    description: "Remote-desktop client."
     providers:
       - type: apt
-        package: git-lfs
+        package: anydesk
+        repo: anydesk
+
+  # ------------------------------ editors -----------------------------------
+  sublime-text:  { name: Sublime Text 4, bundle: editors, description: "Sublime Text editor.", providers: [{ type: apt, package: sublime-text }] }
+  code:
+    name: Visual Studio Code
+    bundle: editors
+    description: "Microsoft's code editor."
+    providers:
+      - type: apt
+        package: code
+        repo: microsoft_vscode
+
+  # ------------------------------ runtime-php -------------------------------
+  php:
+    name: PHP 8.5
+    bundle: runtime-php
+    description: "PHP 8.5 + FPM from Sury; plus common extensions for Laravel."
+    providers:
+      - type: apt
+        package: php8.5
+        repo: sury_php
     post_install:
-      - "Run 'git lfs install' once per clone that uses LFS."
+      - "php -v to confirm version."
 
-  fastfetch:
-    name: fastfetch
-    description: Fast system-info tool; modern neofetch replacement.
-    bundle: base-system
+  php-cli:       { name: php8.5-cli,    bundle: runtime-php, description: "PHP 8.5 CLI.",          providers: [{ type: apt, package: php8.5-cli,    repo: sury_php }] }
+  php-fpm:       { name: php8.5-fpm,    bundle: runtime-php, description: "PHP 8.5 FPM.",          providers: [{ type: apt, package: php8.5-fpm,    repo: sury_php }] }
+  php-curl:      { name: php8.5-curl,   bundle: runtime-php, providers: [{ type: apt, package: php8.5-curl,   repo: sury_php }] }
+  php-xml:       { name: php8.5-xml,    bundle: runtime-php, providers: [{ type: apt, package: php8.5-xml,    repo: sury_php }] }
+  php-mbstring:  { name: php8.5-mbstring, bundle: runtime-php, providers: [{ type: apt, package: php8.5-mbstring, repo: sury_php }] }
+  php-intl:      { name: php8.5-intl,   bundle: runtime-php, providers: [{ type: apt, package: php8.5-intl,   repo: sury_php }] }
+  php-mysql:     { name: php8.5-mysql,  bundle: runtime-php, providers: [{ type: apt, package: php8.5-mysql,  repo: sury_php }] }
+  php-pgsql:     { name: php8.5-pgsql,  bundle: runtime-php, providers: [{ type: apt, package: php8.5-pgsql,  repo: sury_php }] }
+  php-sqlite3:   { name: php8.5-sqlite3, bundle: runtime-php, providers: [{ type: apt, package: php8.5-sqlite3, repo: sury_php }] }
+  php-zip:       { name: php8.5-zip,    bundle: runtime-php, providers: [{ type: apt, package: php8.5-zip,    repo: sury_php }] }
+  php-gd:        { name: php8.5-gd,     bundle: runtime-php, providers: [{ type: apt, package: php8.5-gd,     repo: sury_php }] }
+  php-bcmath:    { name: php8.5-bcmath, bundle: runtime-php, providers: [{ type: apt, package: php8.5-bcmath, repo: sury_php }] }
+  php-readline:  { name: php8.5-readline, bundle: runtime-php, providers: [{ type: apt, package: php8.5-readline, repo: sury_php }] }
+  composer:      { name: Composer,      bundle: runtime-php, description: "PHP dependency manager.", providers: [{ type: apt, package: composer }] }
+
+  laravel-cli:
+    name: Laravel Installer
+    bundle: runtime-php
+    description: "`laravel new` scaffolder (installed via composer global)."
+    providers:
+      - type: composer_global
+        package: laravel/installer
+
+  # ------------------------------ runtime-node ------------------------------
+  nodejs:
+    name: Node.js 24 LTS
+    bundle: runtime-node
+    description: "Node.js runtime + npm + corepack."
     providers:
       - type: apt
-        package: fastfetch
+        package: nodejs
+        repo: nodesource
+    post_install:
+      - "corepack enable  # provides pnpm / yarn on demand"
 
-  # -------- terminal-stack --------
-  kitty:
-    name: Kitty terminal
-    description: GPU-accelerated terminal emulator with native Wayland support.
-    bundle: terminal-stack
+  # ------------------------------ dev-tools ---------------------------------
+  gh:
+    name: GitHub CLI
+    bundle: dev-tools
+    description: "gh — PRs / issues / gists from the terminal."
     providers:
       - type: apt
-        package: kitty
+        package: gh
+        repo: github_cli
 
-  zsh:
-    name: Zsh shell
-    description: The z shell.
-    bundle: terminal-stack
+  lazygit:
+    name: lazygit
+    bundle: dev-tools
+    description: "TUI git client."
+    providers:
+      - type: binary_release
+        source: jesseduffield/lazygit
+        asset: "Linux_x86_64\\.tar\\.gz$"
+        binary: lazygit
+
+  lazydocker:
+    name: lazydocker
+    bundle: dev-tools
+    description: "TUI for Docker."
+    providers:
+      - type: binary_release
+        source: jesseduffield/lazydocker
+        asset: "Linux_x86_64\\.tar\\.gz$"
+        binary: lazydocker
+
+  gitleaks:
+    name: gitleaks
+    bundle: dev-tools
+    description: "Scan repos for accidentally-committed secrets."
+    providers:
+      - type: binary_release
+        source: gitleaks/gitleaks
+        asset: "linux_x64\\.tar\\.gz$"
+        binary: gitleaks
+
+  hurl:
+    name: hurl
+    bundle: dev-tools
+    description: "Run HTTP requests from .hurl files (cool sibling of Postman)."
+    providers:
+      - type: shell
+        apply:
+          - "ver=$(curl -fsSL https://api.github.com/repos/Orange-OpenSource/hurl/releases/latest | jq -r .tag_name)"
+          - "curl -fsSL \"https://github.com/Orange-OpenSource/hurl/releases/download/${ver}/hurl_${ver}_amd64.deb\" -o /tmp/hurl.deb"
+          - "apt-get install -y /tmp/hurl.deb"
+          - "rm -f /tmp/hurl.deb"
+        check: "command -v hurl >/dev/null 2>&1"
+
+  mise:
+    name: mise
+    bundle: dev-tools
+    description: "Polyglot version manager (replaces nvm/phpenv/pyenv/…). User-local."
+    providers:
+      - type: shell
+        apply:
+          - "curl -fsSL https://mise.run | sh"
+        check: "test -x \"$HOME/.local/bin/mise\""
+    post_install:
+      - "Add this to your shell rc so per-project versions auto-load:"
+      - "  eval \"$(mise activate zsh)\"   # or bash"
+
+  # ------------------------------ ops (k8s + hetzner) -----------------------
+  kubectl:
+    name: kubectl
+    bundle: ops
+    description: "Kubernetes CLI."
     providers:
       - type: apt
-        package: zsh
+        package: kubectl
+        repo: kubernetes
 
-  # -------- media --------
-  vlc:
-    name: VLC media player
-    description: Plays essentially any audio or video file.
-    bundle: media
+  kubectx:
+    name: kubectx + kubens
+    bundle: ops
+    description: "Context + namespace switchers for kubectl."
     providers:
       - type: apt
-        package: vlc
+        package: kubectx
 
-  # -------- system-essentials (config-kind items, not installs) --------
+  k9s:
+    name: k9s
+    bundle: ops
+    description: "TUI for Kubernetes clusters."
+    providers:
+      - type: binary_release
+        source: derailed/k9s
+        asset: "Linux_amd64\\.tar\\.gz$"
+        binary: k9s
+
+  hcloud:
+    name: hcloud
+    bundle: ops
+    description: "Hetzner Cloud CLI."
+    providers:
+      - type: binary_release
+        source: hetznercloud/cli
+        asset: "linux-amd64\\.tar\\.gz$"
+        binary: hcloud
+    post_install:
+      - "Run: hcloud context create <name>   # paste API token"
+
+  # ------------------------------ system-essentials (config) ----------------
   system-timezone:
     name: System timezone
-    description: Set the machine's timezone via timedatectl.
     bundle: system-essentials
+    description: "Set the machine's timezone via timedatectl."
     input:
       kind: choice
       prompt: "Timezone?"
@@ -89,56 +314,123 @@ items:
 
   git-identity:
     name: Git identity
-    description: Global git user.name and user.email.
     bundle: system-essentials
+    description: "Global git user.name / user.email / default branch."
     input:
       kind: form
       prompt: "Set your global git identity"
       fields:
-        - { name: name,  prompt: "Full name" }
-        - { name: email, prompt: "Git email" }
+        - { name: name,   prompt: "Full name" }
+        - { name: email,  prompt: "Git email" }
+        - { name: branch, prompt: "Default branch", default: "main" }
     providers:
       - type: config
         apply:
-          - "git config --global user.name {name}"
+          - "git config --global user.name  {name}"
           - "git config --global user.email {email}"
+          - "git config --global init.defaultBranch {branch}"
+          - "git config --global pull.rebase false"
+          - "git config --global core.pager 'delta'"
         check: "git config --global --get user.email"
 
+###############################################################################
+# Bundles
+###############################################################################
 bundles:
+
   base-system:
     name: Base system tools
-    description: Tools every dev box wants.
-    items: [jq, git-lfs, fastfetch]
+    description: "Tools every dev box wants."
+    items: [jq, git-lfs, fastfetch, tmux, mkcert, ffmpeg, btop, ncdu, tealdeer,
+            direnv, shellcheck, mosh, flameshot, duf, apt-file, mat2, httpie, git-delta]
 
   terminal-stack:
     name: Terminal stack
-    description: Modern terminal emulator and shell.
+    description: "Modern terminal and shell."
     items: [kitty, zsh]
 
   media:
     name: Media
-    description: Audio and video playback.
+    description: "Audio and video playback."
     items: [vlc]
+
+  browsers:
+    name: Browsers
+    description: "Chromium plus Chrome (Chromium is Debian-only since Ubuntu snap-gates it)."
+    items: [chromium, google-chrome]
+
+  messengers:
+    name: Messengers
+    description: "Chat / meeting apps."
+    items: [viber]
+
+  remote-access:
+    name: Remote access
+    description: "Remote-desktop tools."
+    items: [anydesk]
+
+  editors:
+    name: Editors / IDEs
+    description: "VS Code + Sublime Text."
+    items: [code, sublime-text]
+
+  runtime-php:
+    name: PHP 8.5 runtime
+    description: "PHP 8.5 + common extensions + Composer + Laravel installer."
+    items: [php, php-cli, php-fpm, php-curl, php-xml, php-mbstring, php-intl,
+            php-mysql, php-pgsql, php-sqlite3, php-zip, php-gd, php-bcmath,
+            php-readline, composer, laravel-cli]
+
+  runtime-node:
+    name: Node.js 24 LTS
+    description: "Node runtime (+ npm, corepack)."
+    items: [nodejs]
+
+  dev-tools:
+    name: Developer tools
+    description: "CLI productivity for everyday work."
+    items: [gh, lazygit, lazydocker, gitleaks, hurl, mise]
+
+  ops:
+    name: Ops / cloud
+    description: "Kubernetes tooling + Hetzner Cloud CLI."
+    items: [kubectl, kubectx, k9s, hcloud]
 
   system-essentials:
     name: System essentials
-    description: First-boot configuration (timezone, git identity, ...).
+    description: "First-boot configuration (timezone, git identity, …)."
     items: [system-timezone, git-identity]
 
+###############################################################################
+# Profiles
+###############################################################################
 profiles:
+
   essentials:
     name: Essentials
-    description: The minimum to make a fresh Debian desktop pleasant.
-    bundles: [base-system, terminal-stack, media, system-essentials]
+    description: "The minimum to make a fresh Debian desktop pleasant."
+    bundles: [base-system, terminal-stack, media, system-essentials, browsers]
 
   fullstack-web:
     name: Fullstack web
-    description: PHP, Node, Docker, editors — Laravel-friendly.
+    description: "PHP, Node, Docker-friendly, Laravel-ready."
     extends: essentials
-    bundles: []  # Phase 2 adds runtime-php, runtime-node, dev-tools, editors.
+    bundles: [runtime-php, runtime-node, dev-tools, editors]
+
+  devops:
+    name: DevOps
+    description: "Kubernetes + cloud-CLI focus."
+    extends: essentials
+    bundles: [dev-tools, editors, ops, remote-access]
+
+  polyglot-dev:
+    name: Polyglot dev
+    description: "Fullstack-web + ops tooling. .NET and other runtimes added in later releases."
+    extends: fullstack-web
+    bundles: [ops]
 
   everything:
     name: Everything
-    description: Kitchen sink; everything the manifest knows.
-    extends: fullstack-web
-    bundles: []  # Phase 2 layers in ops, messengers, remote-access, privacy.
+    description: "Kitchen sink; union of every bundle the manifest knows."
+    extends: polyglot-dev
+    bundles: [remote-access, messengers]
