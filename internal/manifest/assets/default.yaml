@@ -311,6 +311,33 @@ items:
     post_install:
       - "Run: hcloud context create <name>   # paste API token"
 
+  # ------------------------------ desktop-theme (DE-aware config) ----------
+  gnome-dark-mode:
+    name: GNOME dark mode
+    description: "Switch GNOME to prefer-dark + Adwaita-dark."
+    bundle: desktop-theme
+    providers:
+      - type: shell
+        when:
+          desktop: [gnome]
+        apply:
+          - "gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'"
+          - "gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita-dark'"
+        check: "test \"$(gsettings get org.gnome.desktop.interface color-scheme)\" = \"'prefer-dark'\""
+
+  gnome-light-mode:
+    name: GNOME light mode
+    description: "Switch GNOME to default (light) color-scheme + Adwaita."
+    bundle: desktop-theme
+    providers:
+      - type: shell
+        when:
+          desktop: [gnome]
+        apply:
+          - "gsettings set org.gnome.desktop.interface color-scheme 'default'"
+          - "gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita'"
+        check: "test \"$(gsettings get org.gnome.desktop.interface color-scheme)\" = \"'default'\""
+
   # ------------------------------ system-essentials (config) ----------------
   system-timezone:
     name: System timezone
@@ -414,6 +441,11 @@ bundles:
     name: System essentials
     description: "First-boot configuration (timezone, git identity, …)."
     items: [system-timezone, git-identity]
+
+  desktop-theme:
+    name: Desktop theme
+    description: "Dark or light mode for the detected desktop."
+    items: [gnome-dark-mode, gnome-light-mode]
 
 ###############################################################################
 # Profiles

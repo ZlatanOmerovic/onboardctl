@@ -25,22 +25,22 @@ var initOpts struct {
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Guided first-boot wizard: pick a terminal, shell, and prompt",
+	Short: "Guided first-boot wizard: pick a terminal, shell, prompt, and theme",
 	Long: `init walks through the foundational environment setup for a fresh
-Debian-based machine. Four steps, each with a "keep current" option so
-the wizard is non-destructive by default:
+Debian-based machine. Every step has a "keep current" option so the
+wizard is non-destructive by default:
 
   1. Terminal — kitty / alacritty / keep current
   2. Shell    — zsh / fish / keep current
   3. Prompt   — starship / keep current
-  4. Confirm
+  4. Theme    — dark / light / keep current   (GNOME today; other DEs no-op)
 
 After confirmation the picks become a Selection that flows through the
 usual runner pipeline (same Check/Install providers as 'onboardctl profile').
 
-This is v1: theme picking, oh-my-zsh / powerlevel10k / pure, and
-wezterm / ghostty / foot are follow-up iterations. The picks here cover
-80%+ of fresh-machine cases while keeping the wizard one-screen-per-step.`,
+Re-running on a machine that already has some of these installed shows
+the current picks with a ✓ marker; --skip-installed bypasses a whole
+pick when any of its options is already installed.`,
 	Args: cobra.NoArgs,
 	RunE: runInit,
 }
@@ -105,9 +105,17 @@ func runInit(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
+	// Step 4: desktop theme — only surface when the desktop maps to a
+	// theme provider we know. Today that's GNOME only; other DEs skip
+	// the picker gracefully.
+	theme, err := pickThemeForDesktop(os.Stderr, installed)
+	if err != nil || theme.Cancelled {
+		return nil
+	}
+
 	// Build selection of item IDs (empty Value means "keep current" → no item).
 	var itemIDs []string
-	for _, pick := range []tui.OneOfResult{terminal, shell, prompt} {
+	for _, pick := range []tui.OneOfResult{terminal, shell, prompt, theme} {
 		if pick.Value != "" {
 			itemIDs = append(itemIDs, pick.Value)
 		}
@@ -127,6 +135,9 @@ func runInit(cmd *cobra.Command, _ []string) error {
 	}
 	if prompt.Value != "" {
 		fmt.Fprintf(out, "  Prompt:   %s\n", prompt.Label)
+	}
+	if theme.Value != "" {
+		fmt.Fprintf(out, "  Theme:    %s\n", theme.Label)
 	}
 	fmt.Fprintln(out)
 
@@ -157,7 +168,7 @@ func renderWelcome(out io.Writer, d system.Distro, installed map[string]bool) {
 	}
 
 	fmt.Fprintln(out, "")
-	fmt.Fprintln(out, "  Three quick picks. 'Keep current' is always an option.")
+	fmt.Fprintln(out, "  Four quick picks. 'Keep current' is always an option.")
 	fmt.Fprintln(out, "")
 }
 
@@ -250,7 +261,7 @@ func probeInitCandidates(m *manifest.Manifest, d system.Distro) map[string]bool 
 	if m == nil {
 		return out
 	}
-	candidateIDs := []string{"kitty", "alacritty", "zsh", "fish", "starship"}
+	candidateIDs := []string{"kitty", "alacritty", "zsh", "fish", "starship", "gnome-dark-mode", "gnome-light-mode"}
 
 	reg := provider.NewRegistry()
 	reg.Register(provider.NewAPT())
@@ -319,6 +330,25 @@ func pickPrompt(out io.Writer, installed map[string]bool) (tui.OneOfResult, erro
 		{Value: "starship", Label: "Starship", Description: "minimal, fast, cross-shell — starship.rs", Marker: markerFor(installed["starship"])},
 	}
 	return tui.RunOneOf(context.Background(), "Prompt", "Which prompt do you want installed?", opts, out)
+}
+
+// pickThemeForDesktop surfaces dark/light options gated by the detected
+// desktop environment. Non-GNOME desktops get a silent no-op (returns
+// the zero-value "keep current" result) rather than bogus picks that
+// wouldn't apply on this machine.
+func pickThemeForDesktop(out io.Writer, installed map[string]bool) (tui.OneOfResult, error) {
+	de := system.DetectDesktop()
+	if de != system.DesktopGNOME {
+		// Skip the picker; other DEs aren't wired yet. Caller treats
+		// zero-value as "no theme pick — nothing to install".
+		return tui.OneOfResult{Value: "", Label: "Keep current"}, nil
+	}
+	opts := []tui.OneOfOption{
+		{Value: "", Label: "Keep current", Description: "no change"},
+		{Value: "gnome-dark-mode", Label: "Dark", Description: "prefer-dark + Adwaita-dark", Marker: markerFor(installed["gnome-dark-mode"])},
+		{Value: "gnome-light-mode", Label: "Light", Description: "default color-scheme + Adwaita", Marker: markerFor(installed["gnome-light-mode"])},
+	}
+	return tui.RunOneOf(context.Background(), "Theme", "Dark or light?", opts, out)
 }
 
 func executeInit(
