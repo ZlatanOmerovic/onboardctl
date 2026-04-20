@@ -13,7 +13,8 @@ import (
 // like @vue/cli, vercel, netlify-cli, tsx, etc.
 //
 // Relevant manifest.Provider field:
-//   package: the npm package name (bare or scoped, e.g. "yarn" or "@vue/cli"). Required.
+//
+//	package: the npm package name (bare or scoped, e.g. "yarn" or "@vue/cli"). Required.
 //
 // The provider does not install npm itself; the bundled manifest pulls
 // it in through the `nodejs` apt item (NodeSource ships npm alongside node).

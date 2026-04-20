@@ -7,12 +7,13 @@ import (
 	"os"
 	"sort"
 
+	"github.com/spf13/cobra"
+
 	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 	"github.com/ZlatanOmerovic/onboardctl/internal/provider"
 	"github.com/ZlatanOmerovic/onboardctl/internal/runner"
 	"github.com/ZlatanOmerovic/onboardctl/internal/state"
 	"github.com/ZlatanOmerovic/onboardctl/internal/system"
-	"github.com/spf13/cobra"
 )
 
 var installOpts struct {
@@ -62,10 +63,18 @@ func runInstall(cmd *cobra.Command, _ []string) error {
 
 	// Exactly one selection source.
 	n := 0
-	if installOpts.profile != "" { n++ }
-	if installOpts.bundle != "" { n++ }
-	if len(installOpts.items) > 0 { n++ }
-	if installOpts.fromExport != "" { n++ }
+	if installOpts.profile != "" {
+		n++
+	}
+	if installOpts.bundle != "" {
+		n++
+	}
+	if len(installOpts.items) > 0 {
+		n++
+	}
+	if installOpts.fromExport != "" {
+		n++
+	}
 	if n == 0 {
 		return errors.New("must pass one of --profile / --bundle / --items / --from-export")
 	}

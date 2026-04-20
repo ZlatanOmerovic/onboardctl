@@ -14,10 +14,10 @@ import (
 // stubProvider lets runner tests dictate Check/Install outcomes without
 // spawning real commands.
 type stubProvider struct {
-	kind       string
-	checkState provider.State
-	checkErr   error
-	installErr error
+	kind         string
+	checkState   provider.State
+	checkErr     error
+	installErr   error
 	installCount int
 }
 

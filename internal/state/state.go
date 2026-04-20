@@ -31,10 +31,10 @@ const (
 
 // ItemStatus values.
 const (
-	StatusInstalled       = "installed"
-	StatusDetectedExtern  = "detected-external"
-	StatusFailed          = "failed"
-	StatusPending         = "pending"
+	StatusInstalled      = "installed"
+	StatusDetectedExtern = "detected-external"
+	StatusFailed         = "failed"
+	StatusPending        = "pending"
 )
 
 // State is the top-level document persisted to disk.
@@ -57,12 +57,12 @@ type DistroSnapshot struct {
 
 // Run records one invocation of the install pipeline.
 type Run struct {
-	StartedAt        time.Time `yaml:"started_at"`
-	CompletedAt      time.Time `yaml:"completed_at,omitempty"`
-	Profile          string    `yaml:"profile,omitempty"`
-	Selection        []string  `yaml:"selection,omitempty"` // item IDs chosen for this run
-	DryRun           bool      `yaml:"dry_run,omitempty"`
-	OnboardctlVersion string   `yaml:"onboardctl_version,omitempty"`
+	StartedAt         time.Time `yaml:"started_at"`
+	CompletedAt       time.Time `yaml:"completed_at,omitempty"`
+	Profile           string    `yaml:"profile,omitempty"`
+	Selection         []string  `yaml:"selection,omitempty"` // item IDs chosen for this run
+	DryRun            bool      `yaml:"dry_run,omitempty"`
+	OnboardctlVersion string    `yaml:"onboardctl_version,omitempty"`
 }
 
 // Record is the per-item install history line.
@@ -169,7 +169,7 @@ func Save(path string, s *State) error {
 		return fmt.Errorf("tempfile: %w", err)
 	}
 	tmpPath := tmp.Name()
-	defer os.Remove(tmpPath) // no-op after successful rename
+	defer func() { _ = os.Remove(tmpPath) }() // no-op after successful rename
 
 	if _, err := tmp.Write(data); err != nil {
 		_ = tmp.Close()

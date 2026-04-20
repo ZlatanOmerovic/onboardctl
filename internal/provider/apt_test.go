@@ -134,7 +134,7 @@ func TestAPTCheckDetectsSnapDrift(t *testing.T) {
 func TestAPTCheckSnapMissingMeansNotInstalled(t *testing.T) {
 	f := &fakeRunner{responses: map[string]fakeResp{
 		"dpkg-query -W -f ${db:Status-Abbrev} ${Version} bogus": {err: errors.New("no packages found")},
-		"snap list bogus":   {err: errors.New("error: no matching snaps installed")},
+		"snap list bogus": {err: errors.New("error: no matching snaps installed")},
 	}}
 	a := NewAPTWith(f)
 	st, err := a.Check(context.Background(), manifest.Item{}, manifest.Provider{Package: "bogus"})

@@ -4,10 +4,11 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 	"github.com/ZlatanOmerovic/onboardctl/internal/provider"
 	"github.com/ZlatanOmerovic/onboardctl/internal/runner"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 func mkPlan() *runner.Plan {
@@ -34,8 +35,8 @@ func mkPlan() *runner.Plan {
 				State:        provider.State{Installed: true, Version: "0.41.1"},
 			},
 			{
-				ItemID: "skipped-thing",
-				Item:   manifest.Item{Name: "Skipped", Bundle: "base-system"},
+				ItemID:  "skipped-thing",
+				Item:    manifest.Item{Name: "Skipped", Bundle: "base-system"},
 				Skipped: true,
 			},
 		},

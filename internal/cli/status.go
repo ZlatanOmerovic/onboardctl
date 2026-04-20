@@ -5,9 +5,10 @@ import (
 	"sort"
 	"text/tabwriter"
 
+	"github.com/spf13/cobra"
+
 	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 	"github.com/ZlatanOmerovic/onboardctl/internal/system"
-	"github.com/spf13/cobra"
 )
 
 var statusOpts struct {

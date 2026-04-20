@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"io"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 	"github.com/ZlatanOmerovic/onboardctl/internal/runner"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 // RunInstallProgress renders the live install TUI. The caller runs the

@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 )
 
 // FormModel is a simple multi-field text-input form for items whose

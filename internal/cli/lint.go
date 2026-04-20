@@ -3,8 +3,9 @@ package cli
 import (
 	"fmt"
 
-	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 	"github.com/spf13/cobra"
+
+	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 )
 
 var lintCmd = &cobra.Command{

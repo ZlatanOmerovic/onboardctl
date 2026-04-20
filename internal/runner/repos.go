@@ -19,15 +19,15 @@ import (
 //
 // Requires root. The caller (CLI) enforces this.
 type RepoBootstrapper struct {
-	Repos   map[string]manifest.Repo
-	Runner  provider.Runner // shelled commands (curl, gpg)
-	Distro  system.Distro   // for codename / arch substitution
-	KeyDir  string          // defaults to /etc/apt/keyrings
-	SrcDir  string          // defaults to /etc/apt/sources.list.d
-	Out     io.Writer       // progress log; nil → discard
+	Repos  map[string]manifest.Repo
+	Runner provider.Runner // shelled commands (curl, gpg)
+	Distro system.Distro   // for codename / arch substitution
+	KeyDir string          // defaults to /etc/apt/keyrings
+	SrcDir string          // defaults to /etc/apt/sources.list.d
+	Out    io.Writer       // progress log; nil → discard
 
-	done          map[string]bool
-	anyNew        bool // set when a new repo was added this run → triggers apt-get update
+	done   map[string]bool
+	anyNew bool // set when a new repo was added this run → triggers apt-get update
 }
 
 // NewRepoBootstrapper returns a bootstrapper with sensible defaults.

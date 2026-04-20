@@ -6,9 +6,10 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 )
 
 // ChoiceModel picks a single value from a (potentially large) list

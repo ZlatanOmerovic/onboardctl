@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/spf13/cobra"
+
 	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 	"github.com/ZlatanOmerovic/onboardctl/internal/state"
-	"github.com/spf13/cobra"
 )
 
 var gcOpts struct {

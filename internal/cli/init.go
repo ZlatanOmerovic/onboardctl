@@ -7,13 +7,14 @@ import (
 	"os"
 	"os/user"
 
+	"github.com/spf13/cobra"
+
 	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 	"github.com/ZlatanOmerovic/onboardctl/internal/provider"
 	"github.com/ZlatanOmerovic/onboardctl/internal/runner"
 	"github.com/ZlatanOmerovic/onboardctl/internal/state"
 	"github.com/ZlatanOmerovic/onboardctl/internal/system"
 	"github.com/ZlatanOmerovic/onboardctl/internal/tui"
-	"github.com/spf13/cobra"
 )
 
 var initOpts struct {

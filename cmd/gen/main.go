@@ -5,8 +5,8 @@
 // Usage:  gen <output-dir>
 //
 // Invoked twice:
-//   * make extras → developers want the files locally
-//   * .goreleaser.yaml before.hooks → release archives bundle them
+//   - make extras → developers want the files locally
+//   - .goreleaser.yaml before.hooks → release archives bundle them
 //
 // This is a tiny tool, not a library, so it's allowed to Fatal on any
 // error — a broken run of gen should fail the surrounding build loud.
@@ -18,8 +18,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/ZlatanOmerovic/onboardctl/internal/cli"
 	"github.com/spf13/cobra/doc"
+
+	"github.com/ZlatanOmerovic/onboardctl/internal/cli"
 )
 
 func main() {

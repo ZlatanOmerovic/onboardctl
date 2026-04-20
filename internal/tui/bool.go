@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 )
 
 // BoolModel is the simplest input: a yes/no prompt.
@@ -80,8 +81,7 @@ func (m BoolModel) View() string {
 	}
 
 	// Radio-style display. Selected option uses SelectedStyle; the other is dim.
-	yes := "( ) Yes"
-	no := "( ) No"
+	var yes, no string
 	if m.value {
 		yes = CursorStyle.Render("(•) Yes")
 		no = DimStyle.Render("( ) No")

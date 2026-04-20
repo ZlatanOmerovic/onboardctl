@@ -9,10 +9,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 	"github.com/ZlatanOmerovic/onboardctl/internal/state"
 	"github.com/ZlatanOmerovic/onboardctl/internal/system"
-	"github.com/spf13/cobra"
 )
 
 // CheckStatus classifies one doctor result.
@@ -180,8 +181,8 @@ func checkBundledManifest() DoctorCheck {
 		return DoctorCheck{Name: "Bundled manifest", Status: CheckFail, Message: err.Error()}
 	}
 	return DoctorCheck{
-		Name:    "Bundled manifest",
-		Status:  CheckOK,
+		Name:   "Bundled manifest",
+		Status: CheckOK,
 		Message: fmt.Sprintf("v%d — %d profiles, %d bundles, %d items, %d repos",
 			m.Version, len(m.Profiles), len(m.Bundles), len(m.Items), len(m.Repos)),
 	}

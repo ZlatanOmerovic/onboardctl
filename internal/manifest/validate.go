@@ -1,8 +1,8 @@
 package manifest
 
 import (
-	_ "embed"
 	"bytes"
+	_ "embed"
 	"errors"
 	"fmt"
 	"os"

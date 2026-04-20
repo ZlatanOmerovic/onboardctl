@@ -62,7 +62,7 @@ func TestFormatCheckHonoursNoColor(t *testing.T) {
 	_ = os.Unsetenv("NO_COLOR")
 	defer func() {
 		if hadEnv {
-			os.Setenv("NO_COLOR", origEnv)
+			_ = os.Setenv("NO_COLOR", origEnv)
 		}
 	}()
 

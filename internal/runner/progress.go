@@ -29,14 +29,14 @@ const (
 // All fields are optional except Kind; consumers should tolerate missing
 // detail so we can evolve the payload without breaking them.
 type ProgressEvent struct {
-	Kind     ProgressKind
-	ItemID   string
-	Name     string
-	Version  string
-	ErrMsg   string
-	Detail   string // used by Bootstrap* events (repo name)
-	Total    int    // total items in the run (set on every event)
-	Index    int    // 1-based index of this item in the run (set on item events)
+	Kind    ProgressKind
+	ItemID  string
+	Name    string
+	Version string
+	ErrMsg  string
+	Detail  string // used by Bootstrap* events (repo name)
+	Total   int    // total items in the run (set on every event)
+	Index   int    // 1-based index of this item in the run (set on item events)
 }
 
 // ProgressFn is the Runner.ProgressFn callback type. It is invoked

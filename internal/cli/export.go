@@ -7,14 +7,15 @@ import (
 	"sort"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/ZlatanOmerovic/onboardctl/internal/state"
 	"github.com/ZlatanOmerovic/onboardctl/internal/system"
-	"github.com/spf13/cobra"
 )
 
 var exportOpts struct {
-	output string
-	format string
+	output          string
+	format          string
 	includeExternal bool
 }
 

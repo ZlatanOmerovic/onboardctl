@@ -22,6 +22,16 @@ linters-settings:
     simplify: true
   goimports:
     local-prefixes: github.com/ZlatanOmerovic/onboardctl
+  errcheck:
+    # Errors from stdout/stderr writes and best-effort Close calls
+    # aren't actionable and add noise. Everything else still needs
+    # a check.
+    exclude-functions:
+      - fmt.Fprintln
+      - fmt.Fprintf
+      - fmt.Fprint
+      - (*text/tabwriter.Writer).Flush
+      - (*os.File).Close
 
 issues:
   max-issues-per-linter: 0

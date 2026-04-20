@@ -5,8 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ZlatanOmerovic/onboardctl/internal/state"
 	"github.com/spf13/cobra"
+
+	"github.com/ZlatanOmerovic/onboardctl/internal/state"
 )
 
 var forgetOpts struct {

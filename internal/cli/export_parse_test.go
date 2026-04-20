@@ -61,11 +61,11 @@ nodejs
 
 func TestParseExportFormatSniff(t *testing.T) {
 	cases := map[string]bool{
-		"version: 1\nitems:\n  - a\n":    true,
-		"items:\n  - a\n":                true,
-		"# comment only\n":               false,
-		"jq\nvlc\n":                      false,
-		"  # indented comment\njq\n":     false,
+		"version: 1\nitems:\n  - a\n": true,
+		"items:\n  - a\n":             true,
+		"# comment only\n":            false,
+		"jq\nvlc\n":                   false,
+		"  # indented comment\njq\n":  false,
 	}
 	for in, want := range cases {
 		if got := looksLikeExportYAML([]byte(in)); got != want {

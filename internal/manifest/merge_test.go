@@ -23,8 +23,8 @@ func TestMergeExtrasWins(t *testing.T) {
 	extras := &Manifest{
 		Version: 1,
 		Items: map[string]Item{
-			"vlc":     {Name: "VLC (extras override)"},
-			"htop":    {Name: "htop (new)"},
+			"vlc":  {Name: "VLC (extras override)"},
+			"htop": {Name: "htop (new)"},
 		},
 	}
 	got := Merge(base, extras)

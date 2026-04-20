@@ -5,9 +5,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ZlatanOmerovic/onboardctl/internal/runner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/ZlatanOmerovic/onboardctl/internal/runner"
 )
 
 // ReviewChoice is what the user ended with on the review screen.
@@ -39,13 +40,13 @@ type reviewRow struct {
 	bundleName string // for header rows
 
 	// item fields (empty when isHeader)
-	itemID        string
-	displayName   string
-	subText       string
-	marker        string
-	markerStyle   lipgloss.Style
-	selected      bool
-	locked        bool // true when the row can't be toggled (skipped / no provider)
+	itemID      string
+	displayName string
+	subText     string
+	marker      string
+	markerStyle lipgloss.Style
+	selected    bool
+	locked      bool // true when the row can't be toggled (skipped / no provider)
 }
 
 // NewReviewModel assembles a ReviewModel from a runner.Plan.
@@ -246,7 +247,7 @@ func (m ReviewModel) renderCounts() string {
 	}
 	c := m.counts
 	parts := []string{
-		BadgeStyle.Copy().Background(ColMauve).Render(fmt.Sprintf("%d selected", selected)),
+		BadgeStyle.Background(ColMauve).Render(fmt.Sprintf("%d selected", selected)),
 		StyleInstalled.Render(fmt.Sprintf("%s %d ours", GlyphInstalledByUs, c.InstalledByUs)),
 		StyleExternal.Render(fmt.Sprintf("%s %d external", GlyphExternal, c.InstalledExternal)),
 		StyleNotInstalled.Render(fmt.Sprintf("%s %d to install", GlyphNotInstalled, c.NotInstalled)),
@@ -266,7 +267,7 @@ func (m ReviewModel) renderCounts() string {
 func (m ReviewModel) renderRow(i int) string {
 	r := m.rows[i]
 	if r.isHeader {
-		title := TitleStyle.Copy().MarginBottom(0).Render("# " + r.bundleName)
+		title := TitleStyle.MarginBottom(0).Render("# " + r.bundleName)
 		divider := DimStyle.Render(strings.Repeat("─", maxInt(0, 40-len(r.bundleName))))
 		return title + " " + divider
 	}

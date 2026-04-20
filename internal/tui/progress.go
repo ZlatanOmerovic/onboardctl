@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ZlatanOmerovic/onboardctl/internal/runner"
 	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/ZlatanOmerovic/onboardctl/internal/runner"
 )
 
 // ProgressFinishedMsg is what callers send via program.Send() when the
@@ -39,11 +40,11 @@ type InstallProgressModel struct {
 }
 
 type completedRow struct {
-	id      string
-	name    string
-	marker  string
-	detail  string
-	style   lipgloss.Style
+	id     string
+	name   string
+	marker string
+	detail string
+	style  lipgloss.Style
 }
 
 // NewInstallProgressModel constructs the model. total is the expected

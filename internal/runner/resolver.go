@@ -4,7 +4,8 @@
 //
 // Resolver: pure, no side effects. Turns a selection into an item-ID list.
 // Runner:   stateful. Orchestrates repo bootstrap, provider.Check / Install,
-//           and state-file updates.
+//
+//	and state-file updates.
 package runner
 
 import (

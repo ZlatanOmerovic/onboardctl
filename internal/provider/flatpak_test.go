@@ -10,8 +10,8 @@ import (
 
 func TestFlatpakCheckInstalledUserScope(t *testing.T) {
 	f := &fakeRunner{responses: map[string]fakeResp{
-		"flatpak --version":                              {stdout: "Flatpak 1.15.8"},
-		"flatpak info --user org.mozilla.firefox":         {stdout: flatpakInfoOutput("147.0")},
+		"flatpak --version":                       {stdout: "Flatpak 1.15.8"},
+		"flatpak info --user org.mozilla.firefox": {stdout: flatpakInfoOutput("147.0")},
 	}}
 	p := NewFlatpakWith(f)
 	st, err := p.Check(context.Background(), manifest.Item{}, manifest.Provider{ID: "org.mozilla.firefox"})
@@ -31,9 +31,9 @@ func TestFlatpakCheckInstalledUserScope(t *testing.T) {
 
 func TestFlatpakCheckInstalledSystemScopeFallback(t *testing.T) {
 	f := &fakeRunner{responses: map[string]fakeResp{
-		"flatpak --version":                        {stdout: "Flatpak 1.15.8"},
-		"flatpak info --user org.mozilla.firefox":   {err: errors.New("not installed user")},
-		"flatpak info org.mozilla.firefox":          {stdout: flatpakInfoOutput("126.0")},
+		"flatpak --version":                       {stdout: "Flatpak 1.15.8"},
+		"flatpak info --user org.mozilla.firefox": {err: errors.New("not installed user")},
+		"flatpak info org.mozilla.firefox":        {stdout: flatpakInfoOutput("126.0")},
 	}}
 	p := NewFlatpakWith(f)
 	st, err := p.Check(context.Background(), manifest.Item{}, manifest.Provider{ID: "org.mozilla.firefox"})
@@ -47,9 +47,9 @@ func TestFlatpakCheckInstalledSystemScopeFallback(t *testing.T) {
 
 func TestFlatpakCheckNotInstalled(t *testing.T) {
 	f := &fakeRunner{responses: map[string]fakeResp{
-		"flatpak --version":                {stdout: "Flatpak 1.15.8"},
-		"flatpak info --user com.bogus":    {err: errors.New("not installed")},
-		"flatpak info com.bogus":           {err: errors.New("not installed")},
+		"flatpak --version":             {stdout: "Flatpak 1.15.8"},
+		"flatpak info --user com.bogus": {err: errors.New("not installed")},
+		"flatpak info com.bogus":        {err: errors.New("not installed")},
 	}}
 	p := NewFlatpakWith(f)
 	st, err := p.Check(context.Background(), manifest.Item{}, manifest.Provider{ID: "com.bogus"})
@@ -87,7 +87,7 @@ func TestFlatpakInstallHappyPath(t *testing.T) {
 	f := &fakeRunner{responses: map[string]fakeResp{
 		"flatpak --version": {stdout: "Flatpak 1.15.8"},
 		"flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo": {stdout: ""},
-		"flatpak install -y --noninteractive flathub org.mozilla.firefox":                        {stdout: "Installation complete."},
+		"flatpak install -y --noninteractive flathub org.mozilla.firefox":                         {stdout: "Installation complete."},
 	}}
 	p := NewFlatpakWith(f)
 	err := p.Install(context.Background(),
@@ -101,7 +101,7 @@ func TestFlatpakInstallHappyPath(t *testing.T) {
 
 func TestFlatpakInstallRemoteOverride(t *testing.T) {
 	f := &fakeRunner{responses: map[string]fakeResp{
-		"flatpak --version":                                             {stdout: "Flatpak 1.15.8"},
+		"flatpak --version": {stdout: "Flatpak 1.15.8"},
 		"flatpak install -y --noninteractive my-remote org.example.App": {stdout: "Installation complete."},
 	}}
 	p := NewFlatpakWith(f)
@@ -124,7 +124,7 @@ func TestFlatpakInstallUserScope(t *testing.T) {
 	f := &fakeRunner{responses: map[string]fakeResp{
 		"flatpak --version": {stdout: "Flatpak 1.15.8"},
 		"flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo": {stdout: ""},
-		"flatpak install -y --noninteractive --user flathub org.gnome.Calendar":                  {stdout: "Installation complete."},
+		"flatpak install -y --noninteractive --user flathub org.gnome.Calendar":                   {stdout: "Installation complete."},
 	}}
 	p := NewFlatpakWith(f)
 	err := p.Install(context.Background(),

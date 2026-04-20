@@ -21,10 +21,10 @@ import (
 // hcloud, gitleaks, and the like.
 //
 // Lifecycle:
-//   1. Call the GitHub API for the latest release of provider.source.
-//   2. Pick the asset whose name matches provider.asset (regex).
-//   3. Download, extract (tar.gz), find the binary named provider.binary
-//      inside, install it to /usr/local/bin with mode 0755.
+//  1. Call the GitHub API for the latest release of provider.source.
+//  2. Pick the asset whose name matches provider.asset (regex).
+//  3. Download, extract (tar.gz), find the binary named provider.binary
+//     inside, install it to /usr/local/bin with mode 0755.
 //
 // Install requires root because /usr/local/bin typically is not writable by
 // the user. The install subcommand enforces this before dispatch.
@@ -118,8 +118,8 @@ func (b *BinaryRelease) Install(ctx context.Context, item manifest.Item, p manif
 // --- GitHub API types/helpers ---
 
 type githubRelease struct {
-	TagName string         `json:"tag_name"`
-	Assets  []githubAsset  `json:"assets"`
+	TagName string        `json:"tag_name"`
+	Assets  []githubAsset `json:"assets"`
 }
 
 type githubAsset struct {
@@ -139,7 +139,7 @@ func (b *BinaryRelease) fetchLatestRelease(ctx context.Context, source string) (
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("HTTP %d from %s", resp.StatusCode, url)
 	}
@@ -183,7 +183,7 @@ func (b *BinaryRelease) downloadAsset(ctx context.Context, url string) ([]byte, 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
@@ -197,7 +197,7 @@ func extractBinaryFromTarGz(data []byte, bin string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("gzip: %w", err)
 	}
-	defer gzr.Close()
+	defer func() { _ = gzr.Close() }()
 
 	tr := tar.NewReader(gzr)
 	for {
@@ -225,7 +225,7 @@ func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
 		return err
 	}
 	tmpPath := tmp.Name()
-	defer os.Remove(tmpPath)
+	defer func() { _ = os.Remove(tmpPath) }()
 	if _, err := tmp.Write(data); err != nil {
 		_ = tmp.Close()
 		return err

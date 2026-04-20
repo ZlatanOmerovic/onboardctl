@@ -13,10 +13,11 @@ import (
 // Flatpak installs apps from Flatpak remotes (Flathub by default).
 //
 // Relevant manifest.Provider fields:
-//   id:    the Flatpak app ID (e.g. "org.mozilla.firefox"). Required.
-//   extra: optional map. Keys honoured today:
-//            remote  — override the remote to install from (default: "flathub")
-//            scope   — "system" (default) or "user"
+//
+//	id:    the Flatpak app ID (e.g. "org.mozilla.firefox"). Required.
+//	extra: optional map. Keys honoured today:
+//	         remote  — override the remote to install from (default: "flathub")
+//	         scope   — "system" (default) or "user"
 //
 // The provider auto-adds the Flathub remote on first use within a run.
 // It does not install `flatpak` itself — if the binary is missing, Install
@@ -27,8 +28,8 @@ import (
 type Flatpak struct {
 	runner Runner
 
-	mu            sync.Mutex
-	remoteAdded   bool // session cache: have we run `remote-add flathub` already?
+	mu          sync.Mutex
+	remoteAdded bool // session cache: have we run `remote-add flathub` already?
 }
 
 // NewFlatpak returns a Flatpak provider backed by real exec.Command.

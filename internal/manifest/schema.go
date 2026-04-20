@@ -62,39 +62,39 @@ type Item struct {
 
 // Provider kinds. Keep this in sync with the JSON Schema enum.
 const (
-	KindAPT             = "apt"
-	KindFlatpak         = "flatpak"
-	KindBinaryRelease   = "binary_release"
-	KindComposerGlobal  = "composer_global"
-	KindNPMGlobal       = "npm_global"
-	KindConfig          = "config"
-	KindShell           = "shell"
+	KindAPT            = "apt"
+	KindFlatpak        = "flatpak"
+	KindBinaryRelease  = "binary_release"
+	KindComposerGlobal = "composer_global"
+	KindNPMGlobal      = "npm_global"
+	KindConfig         = "config"
+	KindShell          = "shell"
 )
 
 // Provider describes one way of installing or applying an item on the
 // current system. Different kinds use different subsets of the fields.
 type Provider struct {
-	Type           string            `yaml:"type" json:"type"`
-	Package        string            `yaml:"package,omitempty" json:"package,omitempty"`               // apt
-	ID             string            `yaml:"id,omitempty" json:"id,omitempty"`                         // flatpak
-	Repo           string            `yaml:"repo,omitempty" json:"repo,omitempty"`                     // apt (named repo)
-	Source         string            `yaml:"source,omitempty" json:"source,omitempty"`                 // binary_release: owner/repo
-	Asset          string            `yaml:"asset,omitempty" json:"asset,omitempty"`                   // binary_release: asset regex
-	Binary         string            `yaml:"binary,omitempty" json:"binary,omitempty"`                 // binary_release: binary name in archive
-	Apply          []string          `yaml:"apply,omitempty" json:"apply,omitempty"`                   // config/shell: commands
-	Check          string            `yaml:"check,omitempty" json:"check,omitempty"`                   // override default check
-	When           *When             `yaml:"when,omitempty" json:"when,omitempty"`
-	Extra          map[string]string `yaml:"extra,omitempty" json:"extra,omitempty"`
+	Type    string            `yaml:"type" json:"type"`
+	Package string            `yaml:"package,omitempty" json:"package,omitempty"` // apt
+	ID      string            `yaml:"id,omitempty" json:"id,omitempty"`           // flatpak
+	Repo    string            `yaml:"repo,omitempty" json:"repo,omitempty"`       // apt (named repo)
+	Source  string            `yaml:"source,omitempty" json:"source,omitempty"`   // binary_release: owner/repo
+	Asset   string            `yaml:"asset,omitempty" json:"asset,omitempty"`     // binary_release: asset regex
+	Binary  string            `yaml:"binary,omitempty" json:"binary,omitempty"`   // binary_release: binary name in archive
+	Apply   []string          `yaml:"apply,omitempty" json:"apply,omitempty"`     // config/shell: commands
+	Check   string            `yaml:"check,omitempty" json:"check,omitempty"`     // override default check
+	When    *When             `yaml:"when,omitempty" json:"when,omitempty"`
+	Extra   map[string]string `yaml:"extra,omitempty" json:"extra,omitempty"`
 }
 
 // Repo declares a third-party apt repository used by one or more items.
 // The runner materialises it into /etc/apt/keyrings and /etc/apt/sources.list.d
 // the first time it's needed.
 type Repo struct {
-	Kind           string `yaml:"kind" json:"kind"`                                   // apt
-	Keyring        string `yaml:"keyring,omitempty" json:"keyring,omitempty"`         // URL
+	Kind           string `yaml:"kind" json:"kind"`                           // apt
+	Keyring        string `yaml:"keyring,omitempty" json:"keyring,omitempty"` // URL
 	KeyringDearmor bool   `yaml:"keyring_dearmor,omitempty" json:"keyring_dearmor,omitempty"`
-	Source         string `yaml:"source" json:"source"`                               // apt sources line ({keyring}/{codename} templated)
+	Source         string `yaml:"source" json:"source"` // apt sources line ({keyring}/{codename} templated)
 	When           *When  `yaml:"when,omitempty" json:"when,omitempty"`
 }
 

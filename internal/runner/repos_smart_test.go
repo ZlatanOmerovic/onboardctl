@@ -106,8 +106,8 @@ func TestExtractRepoURL(t *testing.T) {
 		"deb [signed-by=/etc/apt/keyrings/x.gpg] https://packages.sury.org/php/ trixie main": "https://packages.sury.org/php",
 		"deb http://deb.anydesk.com/ all main":                                               "http://deb.anydesk.com",
 		"deb [arch=amd64] https://cli.github.com/packages stable main":                       "https://cli.github.com/packages",
-		"# commented out":                                                                    "",
-		"":                                                                                   "",
+		"# commented out": "",
+		"":                "",
 	}
 	for in, want := range cases {
 		if got := extractRepoURL(in); got != want {

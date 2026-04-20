@@ -28,8 +28,13 @@ test: ## Run unit tests
 vet: ## Run go vet
 	go vet ./...
 
-fmt: ## Format code
-	gofmt -w .
+fmt: ## Format code (gofmt -s + goimports if available)
+	gofmt -s -w .
+	@if command -v goimports >/dev/null 2>&1; then \
+		goimports -local github.com/ZlatanOmerovic/onboardctl -w .; \
+	else \
+		echo "goimports not found — run: go install golang.org/x/tools/cmd/goimports@latest"; \
+	fi
 
 tidy: ## Tidy modules
 	go mod tidy

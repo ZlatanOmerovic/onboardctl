@@ -14,8 +14,9 @@ import (
 // anything else expressible as a short sequence of shell commands.
 //
 // Provider fields used:
-//   apply: ordered list of shell commands to run via `bash -c`.
-//   check: single shell command; exit-0 means "installed".
+//
+//	apply: ordered list of shell commands to run via `bash -c`.
+//	check: single shell command; exit-0 means "installed".
 //
 // Commands run with the current user's privileges; if apply needs root,
 // the caller is responsible for being root (the install subcommand

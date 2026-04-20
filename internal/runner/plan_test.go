@@ -130,8 +130,8 @@ func TestPlanCounts(t *testing.T) {
 	p := &Plan{
 		Entries: []PlanEntry{
 			{TrackedByUs: true, State: provider.State{Installed: true}},
-			{State: provider.State{Installed: true}},      // installed-external
-			{},                                            // not-installed
+			{State: provider.State{Installed: true}}, // installed-external
+			{},                                       // not-installed
 			{Skipped: true},
 			{NoProvider: true},
 		},

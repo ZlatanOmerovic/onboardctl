@@ -5,8 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 )
 
 // The order we like to surface profiles in. Anything unknown (user extras,

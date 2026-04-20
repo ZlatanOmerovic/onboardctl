@@ -98,8 +98,8 @@ func TestNPMInstallHappyPath(t *testing.T) {
 
 func TestNPMInstallScopedPackage(t *testing.T) {
 	f := &fakeRunner{responses: map[string]fakeResp{
-		"npm --version":             {stdout: "10.9.2"},
-		"npm install -g @vue/cli":   {stdout: "added 200 packages"},
+		"npm --version":           {stdout: "10.9.2"},
+		"npm install -g @vue/cli": {stdout: "added 200 packages"},
 	}}
 	p := NewNPMGlobalWith(f)
 	err := p.Install(context.Background(),
@@ -127,7 +127,7 @@ func TestNPMInstallRequiresNPM(t *testing.T) {
 
 func TestNPMInstallSurfacesError(t *testing.T) {
 	f := &fakeRunner{responses: map[string]fakeResp{
-		"npm --version":           {stdout: "10.9.2"},
+		"npm --version":            {stdout: "10.9.2"},
 		"npm install -g bogus-pkg": {stdout: "npm ERR! 404", err: errors.New("exit 1")},
 	}}
 	p := NewNPMGlobalWith(f)

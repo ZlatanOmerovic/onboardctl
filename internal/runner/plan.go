@@ -13,8 +13,8 @@ import (
 // it's already installed. Plans never mutate state; the TUI uses them to
 // render the review screen before the user commits to an apply.
 type Plan struct {
-	Profile string       // informational; whatever was requested
-	Entries []PlanEntry  // in resolved order
+	Profile string      // informational; whatever was requested
+	Entries []PlanEntry // in resolved order
 }
 
 // PlanEntry is one item's pre-flight summary.
@@ -139,5 +139,5 @@ var (
 
 type runnerError struct{ s string }
 
-func newRunnerError(s string) *runnerError    { return &runnerError{s: s} }
-func (e *runnerError) Error() string           { return e.s }
+func newRunnerError(s string) *runnerError { return &runnerError{s: s} }
+func (e *runnerError) Error() string       { return e.s }

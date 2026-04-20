@@ -4,8 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
 )
 
 func mkManifest() *manifest.Manifest {
