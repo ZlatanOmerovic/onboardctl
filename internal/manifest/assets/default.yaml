@@ -193,6 +193,25 @@ items:
       - type: composer_global
         package: laravel/installer
 
+  # ------------------------------ laravel-extras ---------------------------
+  mysql-client:    { name: MySQL client,    bundle: laravel-extras, description: "Command-line mysql / mysqladmin.",        providers: [{ type: apt, package: default-mysql-client }] }
+  postgres-client: { name: PostgreSQL client, bundle: laravel-extras, description: "Command-line psql + tooling.",          providers: [{ type: apt, package: postgresql-client }] }
+  redis-tools:     { name: Redis client,    bundle: laravel-extras, description: "redis-cli for poking at Redis/Valkey.",   providers: [{ type: apt, package: redis-tools }] }
+  sqlite3-cli:     { name: SQLite CLI,      bundle: laravel-extras, description: "sqlite3 shell — Laravel 11+ defaults to sqlite for new apps.", providers: [{ type: apt, package: sqlite3 }] }
+
+  mailpit:
+    name: Mailpit
+    bundle: laravel-extras
+    description: "Local SMTP trap with a web UI — catches mail your app sends in dev."
+    providers:
+      - type: binary_release
+        source: axllent/mailpit
+        asset: "linux-amd64\\.tar\\.gz$"
+        binary: mailpit
+    post_install:
+      - "Launch with: mailpit   (SMTP on :1025, web UI on :8025)"
+      - "Configure Laravel: MAIL_MAILER=smtp MAIL_HOST=127.0.0.1 MAIL_PORT=1025"
+
   # ------------------------------ runtime-node ------------------------------
   nodejs:
     name: Node.js 24 LTS
@@ -422,6 +441,11 @@ bundles:
             php-mysql, php-pgsql, php-sqlite3, php-zip, php-gd, php-bcmath,
             php-readline, composer, laravel-cli]
 
+  laravel-extras:
+    name: Laravel-adjacent tools
+    description: "Database CLIs + local mail trap that most Laravel apps end up wanting."
+    items: [mysql-client, postgres-client, redis-tools, sqlite3-cli, mailpit]
+
   runtime-node:
     name: Node.js 24 LTS
     description: "Node runtime (+ npm, corepack)."
@@ -461,7 +485,7 @@ profiles:
     name: Fullstack web
     description: "PHP, Node, Docker-friendly, Laravel-ready."
     extends: essentials
-    bundles: [runtime-php, runtime-node, dev-tools, editors]
+    bundles: [runtime-php, runtime-node, dev-tools, editors, laravel-extras]
 
   devops:
     name: DevOps
