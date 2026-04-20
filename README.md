@@ -133,9 +133,9 @@ onboardctl lint ~/.config/onboardctl/extras.yaml
 |----------------------|-------------------------------------------------------------------------------------------------------|
 | **1 — foundation** ✅ | Data model; `status` / `lint`; distro + desktop detection                                             |
 | **2 — installers** ✅ | `apt` / `shell` / `config` / `binary_release` / `composer_global` providers; `install` subcommand; state file; When gates; apt repo bootstrap |
-| **3 — TUI (MVP)** ✅  | Bubble Tea `profile` picker with Catppuccin Mocha palette; item counts per profile   |
-| 3+ — TUI follow-ups   | Per-item toggles; config-input forms (timezone, git identity); four status markers on items; live install progress |
-| 4 — release          | `curl \| sh` bootstrap, GitHub Actions releases, screenshots, Homebrew tap (maybe), Debian `.deb`     |
+| **3 — TUI** ✅        | Bubble Tea `profile` picker with Catppuccin Mocha palette; per-item toggles with ✓/●/⚠/∅ status markers; config-input forms (form/text/choice/bool); live install progress; `init` wizard (terminal/shell/prompt) |
+| **4 — release** ✅    | `curl \| sh` bootstrap, GoReleaser workflow on tag push (linux/amd64 + linux/arm64), conventional-commits changelog, sha256 checksums |
+| 4+ — release follow-ups | Shell completions + manpage bundled with releases; optional Debian `.deb` repo; Homebrew tap (maybe) |
 
 ## Non-goals (and the tools that cover them)
 

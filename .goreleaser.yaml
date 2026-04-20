@@ -1,0 +1,90 @@
+# goreleaser config for onboardctl.
+#
+# Invoked by .github/workflows/release.yml on tag pushes. Produces:
+#   * linux/amd64 and linux/arm64 static binaries
+#   * .tar.gz archives matching scripts/install.sh's expected name template
+#   * checksums.txt over all assets
+#   * auto-generated release notes from conventional-commits on the tag
+#
+# Version schema: tag 'v0.1.0' yields artefacts named onboardctl_0.1.0_<os>_<arch>.tar.gz
+# so the install script's "${BIN_NAME}_${version_nov}_${os}_${arch}.tar.gz"
+# template resolves cleanly without additional glue.
+
+version: 2
+
+project_name: onboardctl
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: onboardctl
+    main: ./cmd/onboardctl
+    binary: onboardctl
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/ZlatanOmerovic/onboardctl/internal/cli.Version={{.Version}}
+      - -X github.com/ZlatanOmerovic/onboardctl/internal/cli.Commit={{.ShortCommit}}
+      - -X github.com/ZlatanOmerovic/onboardctl/internal/cli.BuildDate={{.Date}}
+
+archives:
+  - id: default
+    formats:
+      - tar.gz
+    # Matches scripts/install.sh asset lookup:
+    # onboardctl_${version}_${os}_${arch}.tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+
+checksum:
+  # Filename matches install.sh's ${BIN_NAME}_${version}_checksums.txt.
+  name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'
+  algorithm: sha256
+
+changelog:
+  use: git
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^feat(\(.+?\))?:'
+      order: 0
+    - title: Fixes
+      regexp: '^fix(\(.+?\))?:'
+      order: 1
+    - title: Other
+      order: 99
+  filters:
+    exclude:
+      - '^docs(\(.+?\))?:'
+      - '^test(\(.+?\))?:'
+      - '^chore(\(.+?\))?:'
+      - '^ci(\(.+?\))?:'
+
+release:
+  github:
+    owner: ZlatanOmerovic
+    name: onboardctl
+  # Drafts let you write a proper human summary before publishing if you
+  # want to; the auto-generated notes are still included underneath.
+  draft: false
+  prerelease: auto
+  footer: |
+    ---
+    Install:
+    ```
+    curl -fsSL https://raw.githubusercontent.com/ZlatanOmerovic/onboardctl/main/scripts/install.sh | bash
+    ```

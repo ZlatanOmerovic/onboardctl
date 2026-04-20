@@ -43,3 +43,7 @@ run: build ## Build and run
 clean: ## Remove build artefacts
 	rm -f $(BIN)
 	rm -rf dist/
+
+release-dry: ## Locally simulate a release without publishing (needs goreleaser)
+	@command -v goreleaser >/dev/null || { echo "install goreleaser: https://goreleaser.com/install"; exit 1; }
+	goreleaser release --snapshot --clean --skip=publish,sign
