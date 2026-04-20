@@ -66,10 +66,27 @@ func RunForm(
 			return FormResult{}, err
 		}
 		return runChoiceModel(itemID, itemName, in, choices, out)
+	case manifest.InputBool:
+		return runBoolModel(itemID, itemName, in, out)
 	default:
-		return FormResult{}, fmt.Errorf("tui: input kind %q not yet supported (wait for a later release)", in.Kind)
+		return FormResult{}, fmt.Errorf("tui: input kind %q not yet supported", in.Kind)
 	}
 	// _ = errOut   // reserved; keep in case we split stderr later
+}
+
+func runBoolModel(itemID, itemName string, in *manifest.Input, out io.Writer) (FormResult, error) {
+	model := NewBoolModel(itemID, itemName, in)
+	opts := []tea.ProgramOption{tea.WithOutput(out)}
+	prog := tea.NewProgram(model, opts...)
+	final, runErr := prog.Run()
+	if runErr != nil {
+		return FormResult{}, fmt.Errorf("tui: %w", runErr)
+	}
+	bm, ok := final.(BoolModel)
+	if !ok {
+		return FormResult{}, fmt.Errorf("tui: unexpected final model type %T", final)
+	}
+	return bm.Result(), nil
 }
 
 func runFormModel(itemID, itemName string, in *manifest.Input, out io.Writer) (FormResult, error) {
