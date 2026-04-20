@@ -68,6 +68,7 @@ func runProfile(cmd *cobra.Command, _ []string) error {
 	reg.Register(provider.NewBinaryRelease())
 	reg.Register(provider.NewComposerGlobal())
 	reg.Register(provider.NewFlatpak())
+	reg.Register(provider.NewNPMGlobal())
 
 	st, err := state.Load("")
 	if err != nil {
