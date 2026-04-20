@@ -107,6 +107,63 @@ func TestAPTInstallSurfacesError(t *testing.T) {
 	}
 }
 
+func TestAPTCheckDetectsSnapDrift(t *testing.T) {
+	f := &fakeRunner{responses: map[string]fakeResp{
+		"dpkg-query -W -f ${db:Status-Abbrev} ${Version} firefox": {err: errors.New("no packages found")},
+		"snap list firefox": {stdout: "Name     Version  Rev   Tracking       Publisher  Notes\nfirefox  147.0    4820  latest/stable  mozilla**  -\n"},
+	}}
+	a := NewAPTWith(f)
+	st, err := a.Check(context.Background(), manifest.Item{}, manifest.Provider{Package: "firefox"})
+	if err != nil {
+		t.Fatalf("Check error: %v", err)
+	}
+	if !st.Installed {
+		t.Error("expected Installed=true (via snap)")
+	}
+	if st.ProviderUsed != "snap" {
+		t.Errorf("ProviderUsed = %q, want 'snap'", st.ProviderUsed)
+	}
+	if st.Version != "147.0" {
+		t.Errorf("Version = %q, want 147.0", st.Version)
+	}
+	if !st.IsProviderDrift(manifest.KindAPT) {
+		t.Error("expected IsProviderDrift(apt) = true")
+	}
+}
+
+func TestAPTCheckSnapMissingMeansNotInstalled(t *testing.T) {
+	f := &fakeRunner{responses: map[string]fakeResp{
+		"dpkg-query -W -f ${db:Status-Abbrev} ${Version} bogus": {err: errors.New("no packages found")},
+		"snap list bogus":   {err: errors.New("error: no matching snaps installed")},
+	}}
+	a := NewAPTWith(f)
+	st, err := a.Check(context.Background(), manifest.Item{}, manifest.Provider{Package: "bogus"})
+	if err != nil {
+		t.Fatalf("Check error: %v", err)
+	}
+	if st.Installed {
+		t.Error("expected Installed=false when neither apt nor snap has it")
+	}
+}
+
+func TestAPTCheckAptBeatsSnapWhenBothPresent(t *testing.T) {
+	f := &fakeRunner{responses: map[string]fakeResp{
+		"dpkg-query -W -f ${db:Status-Abbrev} ${Version} firefox": {stdout: "ii  127.0.2-1"},
+		"snap list firefox": {stdout: "Name     Version\nfirefox  147.0  4820 latest/stable mozilla -\n"},
+	}}
+	a := NewAPTWith(f)
+	st, err := a.Check(context.Background(), manifest.Item{}, manifest.Provider{Package: "firefox"})
+	if err != nil {
+		t.Fatalf("Check error: %v", err)
+	}
+	if st.ProviderUsed != manifest.KindAPT {
+		t.Errorf("apt-installed should win over snap: ProviderUsed = %q", st.ProviderUsed)
+	}
+	if st.Version != "127.0.2-1" {
+		t.Errorf("Version = %q, want 127.0.2-1", st.Version)
+	}
+}
+
 func TestParseDpkgStatus(t *testing.T) {
 	cases := []struct{ in, wantS, wantV string }{
 		{"ii  1.2.3", "ii", "1.2.3"},

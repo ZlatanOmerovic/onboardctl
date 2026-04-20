@@ -32,6 +32,13 @@ func NewAPTWith(r Runner) *APT { return &APT{runner: r} }
 func (a *APT) Kind() string { return manifest.KindAPT }
 
 // Check implements Provider.
+//
+// Beyond the native dpkg lookup, Check also queries `snap list` when
+// snap is installed. If snap reports the package but apt doesn't, we
+// surface the drift by returning Installed=true + ProviderUsed="snap"
+// so the UI can render a ⚠ marker — the user then knows the manifest
+// wants an apt .deb but the system has the snap. Common on Ubuntu
+// since 22.04 for Firefox / Chromium / Thunderbird.
 func (a *APT) Check(ctx context.Context, _ manifest.Item, p manifest.Provider) (State, error) {
 	if p.Package == "" {
 		return State{}, errors.New("apt provider: provider.package is required")
@@ -40,20 +47,53 @@ func (a *APT) Check(ctx context.Context, _ manifest.Item, p manifest.Provider) (
 	// Exits non-zero when the package is unknown to dpkg.
 	out, err := a.runner.Run(ctx, "dpkg-query", "-W",
 		"-f", "${db:Status-Abbrev} ${Version}", p.Package)
+	if err == nil {
+		status, version := parseDpkgStatus(string(out))
+		if strings.HasPrefix(status, "ii") {
+			return State{
+				Installed:    true,
+				Version:      version,
+				ProviderUsed: manifest.KindAPT,
+			}, nil
+		}
+	}
+
+	// Not installed via apt — look for a snap-delivered alternative.
+	if snapVer, found := a.findSnapVersion(ctx, p.Package); found {
+		return State{
+			Installed:    true,
+			Version:      snapVer,
+			ProviderUsed: "snap", // signals drift to the TUI
+			InstalledBy:  "external",
+		}, nil
+	}
+	return State{Installed: false}, nil
+}
+
+// findSnapVersion runs `snap list <pkg>` and returns the installed
+// version if snap knows it. Any error or "not installed" response
+// yields (_, false).
+func (a *APT) findSnapVersion(ctx context.Context, pkg string) (string, bool) {
+	out, err := a.runner.Run(ctx, "snap", "list", pkg)
 	if err != nil {
-		// Not installed: dpkg-query prints "no packages found matching ..."
-		return State{Installed: false}, nil
+		return "", false
 	}
-	status, version := parseDpkgStatus(string(out))
-	if !strings.HasPrefix(status, "ii") {
-		return State{Installed: false}, nil
+	// snap list output:
+	//   Name     Version  Rev  Tracking  Publisher  Notes
+	//   firefox  147.0    4820  latest/stable  mozilla✓  -
+	// We want the second column of the first data row.
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "Name") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) >= 2 && fields[0] == pkg {
+			return fields[1], true
+		}
 	}
-	return State{
-		Installed:    true,
-		Version:      version,
-		InstalledBy:  "", // fill in at the runner level from state.yaml
-		ProviderUsed: manifest.KindAPT,
-	}, nil
+	return "", false
 }
 
 // Install implements Provider.

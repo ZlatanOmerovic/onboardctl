@@ -107,6 +107,11 @@ func statusForEntry(e runner.PlanEntry) (marker string, style lipgloss.Style, lo
 	case e.NoProvider:
 		return "?", StyleNotInstalled, true, false,
 			DimStyle.Render("skipped: no registered provider for any of its kinds")
+	case e.Drift:
+		v := firstNonEmpty(e.State.Version, "present")
+		return GlyphDrift, StyleDrift, false, false,
+			DimStyle.Render("installed via " + e.State.ProviderUsed +
+				"; manifest prefers " + e.ProviderKind + " (" + v + ")")
 	case e.State.Installed && e.TrackedByUs:
 		v := firstNonEmpty(e.State.Version, e.TrackedByUsVer, "present")
 		return GlyphInstalledByUs, StyleInstalled, false, true,
@@ -245,6 +250,9 @@ func (m ReviewModel) renderCounts() string {
 		StyleInstalled.Render(fmt.Sprintf("%s %d ours", GlyphInstalledByUs, c.InstalledByUs)),
 		StyleExternal.Render(fmt.Sprintf("%s %d external", GlyphExternal, c.InstalledExternal)),
 		StyleNotInstalled.Render(fmt.Sprintf("%s %d to install", GlyphNotInstalled, c.NotInstalled)),
+	}
+	if c.Drift > 0 {
+		parts = append(parts, StyleDrift.Render(fmt.Sprintf("%s %d drift", GlyphDrift, c.Drift)))
 	}
 	if c.Skipped > 0 {
 		parts = append(parts, StyleSkipped.Render(fmt.Sprintf("%s %d skipped", GlyphSkipped, c.Skipped)))

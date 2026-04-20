@@ -19,16 +19,17 @@ type Plan struct {
 
 // PlanEntry is one item's pre-flight summary.
 type PlanEntry struct {
-	ItemID        string
-	Item          manifest.Item
-	Provider      manifest.Provider // only meaningful when Skipped == false && NoProvider == false
-	ProviderKind  string            // convenience: Provider.Type
-	State         provider.State    // Check() result (zero value if Skipped/NoProvider)
-	CheckErr      string            // populated if Check errored (kept as string so Plan is YAML-safe)
-	Skipped       bool              // item-level When gate excluded this
-	NoProvider    bool              // no registered provider for any of the item's kinds
-	TrackedByUs   bool              // state.yaml records this item as installed by onboardctl
-	TrackedByUsVer string           // version recorded in state.yaml (empty if not tracked)
+	ItemID         string
+	Item           manifest.Item
+	Provider       manifest.Provider // only meaningful when Skipped == false && NoProvider == false
+	ProviderKind   string            // convenience: Provider.Type
+	State          provider.State    // Check() result (zero value if Skipped/NoProvider)
+	CheckErr       string            // populated if Check errored (kept as string so Plan is YAML-safe)
+	Skipped        bool              // item-level When gate excluded this
+	NoProvider     bool              // no registered provider for any of the item's kinds
+	TrackedByUs    bool              // state.yaml records this item as installed by onboardctl
+	TrackedByUsVer string            // version recorded in state.yaml (empty if not tracked)
+	Drift          bool              // installed, but via a provider kind different from manifest preferred
 }
 
 // Plan walks a selection and produces a PlanEntry per resolved item.
@@ -86,6 +87,11 @@ func (r *Runner) Plan(ctx context.Context, sel Selection) (*Plan, error) {
 		if cerr != nil {
 			entry.CheckErr = cerr.Error()
 		}
+		// Drift: installed, but via a different provider kind than the
+		// manifest prefers. Surfaces as a ⚠ in the review screen.
+		if st.Installed && st.ProviderUsed != "" && st.ProviderUsed != prov.Type {
+			entry.Drift = true
+		}
 		p.Entries = append(p.Entries, entry)
 	}
 	return p, nil
@@ -101,6 +107,8 @@ func (p *Plan) Counts() PlanCounts {
 			c.Skipped++
 		case e.NoProvider:
 			c.NoProvider++
+		case e.Drift:
+			c.Drift++
 		case e.State.Installed && e.TrackedByUs:
 			c.InstalledByUs++
 		case e.State.Installed:
@@ -120,6 +128,7 @@ type PlanCounts struct {
 	NotInstalled      int
 	Skipped           int
 	NoProvider        int
+	Drift             int
 }
 
 // Sentinel errors kept here so both Run and Plan share them.
