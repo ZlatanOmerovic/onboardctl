@@ -11,6 +11,34 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// RunInstallProgress renders the live install TUI. The caller runs the
+// actual install in a goroutine, publishing progress events (and a
+// final ProgressFinishedMsg) via the returned program.
+//
+// The returned stopFn should be called to wait for the TUI to exit; it
+// returns the model's final state.
+func RunInstallProgress(
+	profileName string,
+	total int,
+	out io.Writer,
+) (*tea.Program, func() (InstallProgressModel, error)) {
+	model := NewInstallProgressModel(profileName, total)
+	opts := []tea.ProgramOption{tea.WithOutput(out)}
+	prog := tea.NewProgram(model, opts...)
+	wait := func() (InstallProgressModel, error) {
+		final, err := prog.Run()
+		if err != nil {
+			return InstallProgressModel{}, err
+		}
+		pm, ok := final.(InstallProgressModel)
+		if !ok {
+			return InstallProgressModel{}, fmt.Errorf("tui: unexpected final model type %T", final)
+		}
+		return pm, nil
+	}
+	return prog, wait
+}
+
 // RunForm renders a single input form for one manifest item with an
 // Input block. Used between the review screen and dispatch to collect
 // user-supplied values for config items like git-identity.

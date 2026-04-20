@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/ZlatanOmerovic/onboardctl/internal/manifest"
@@ -189,6 +190,27 @@ func executeReview(
 		bootstrapper = runner.NewRepoBootstrapper(m.Repos, provider.ExecRunner(), d)
 	}
 
+	// Dry-run: simple text summary, no TUI.
+	if !apply {
+		return executeHeadless(out, m, reg, st, d, env, choice, rc, values, bootstrapper)
+	}
+
+	return executeWithProgressTUI(m, reg, st, env, choice, rc, values, bootstrapper)
+}
+
+// executeHeadless runs the dry-run path with plain stdout logging.
+func executeHeadless(
+	out interface{ Write([]byte) (int, error) },
+	m *manifest.Manifest,
+	reg provider.Registry,
+	st *state.State,
+	_ system.Distro,
+	env runner.Env,
+	choice tui.ProfileChoice,
+	rc tui.ReviewChoice,
+	values map[string]map[string]string,
+	bootstrapper *runner.RepoBootstrapper,
+) error {
 	r := &runner.Runner{
 		Manifest:     m,
 		Registry:     reg,
@@ -197,22 +219,66 @@ func executeReview(
 		Env:          env,
 		Values:       values,
 		Out:          out,
-		StateFn: func(s *state.State) error {
-			return state.Save("", s)
-		},
+		StateFn:      func(s *state.State) error { return state.Save("", s) },
 	}
 
-	fmt.Fprintf(out, "\n%s: %d item(s) selected\n", modeString(apply), len(rc.ItemIDs))
-	fmt.Fprintln(out)
-
+	fmt.Fprintf(out, "\nDry-run: %d item(s) selected\n\n", len(rc.ItemIDs))
 	sum, err := r.Run(context.Background(), runner.Selection{Items: rc.ItemIDs}, runner.Options{
-		DryRun:  !apply,
-		Profile: choice.ID,
+		DryRun: true, Profile: choice.ID,
 	})
 	if err != nil {
 		return err
 	}
+	return printHeadlessSummary(out, sum)
+}
 
+// executeWithProgressTUI runs apply-mode with the live Bubble Tea progress UI.
+func executeWithProgressTUI(
+	m *manifest.Manifest,
+	reg provider.Registry,
+	st *state.State,
+	env runner.Env,
+	choice tui.ProfileChoice,
+	rc tui.ReviewChoice,
+	values map[string]map[string]string,
+	bootstrapper *runner.RepoBootstrapper,
+) error {
+	prog, wait := tui.RunInstallProgress(choice.Name, len(rc.ItemIDs), os.Stderr)
+
+	r := &runner.Runner{
+		Manifest:     m,
+		Registry:     reg,
+		State:        st,
+		Bootstrapper: bootstrapper,
+		Env:          env,
+		Values:       values,
+		Out:          io.Discard, // the TUI owns the screen; text log would scramble it
+		StateFn:      func(s *state.State) error { return state.Save("", s) },
+		ProgressFn:   func(e runner.ProgressEvent) { prog.Send(e) },
+	}
+
+	// Run the install on its own goroutine; the tea.Program blocks on wait().
+	go func() {
+		sum, err := r.Run(context.Background(), runner.Selection{Items: rc.ItemIDs}, runner.Options{
+			DryRun: false, Profile: choice.ID,
+		})
+		prog.Send(tui.ProgressFinishedMsg{Summary: sum, Err: err})
+	}()
+
+	final, err := wait()
+	if err != nil {
+		return fmt.Errorf("progress tui: %w", err)
+	}
+	if final.FinalErr() != nil {
+		return final.FinalErr()
+	}
+	if sum := final.Summary(); sum != nil && len(sum.Failed) > 0 {
+		return fmt.Errorf("%d item(s) failed", len(sum.Failed))
+	}
+	return nil
+}
+
+func printHeadlessSummary(out interface{ Write([]byte) (int, error) }, sum *runner.Summary) error {
 	fmt.Fprintln(out, "\nSummary")
 	fmt.Fprintf(out, "  Planned:       %d\n", len(sum.Selected))
 	if sum.DryRun {
@@ -232,9 +298,3 @@ func executeReview(
 	return nil
 }
 
-func modeString(apply bool) string {
-	if apply {
-		return "Applying"
-	}
-	return "Dry-run"
-}
