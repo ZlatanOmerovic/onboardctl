@@ -11,6 +11,37 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// RunForm renders a single input form for one manifest item with an
+// Input block. Used between the review screen and dispatch to collect
+// user-supplied values for config items like git-identity.
+func RunForm(
+	ctx context.Context,
+	itemID, itemName string,
+	in *manifest.Input,
+	out io.Writer, errOut io.Writer,
+) (FormResult, error) {
+	if in == nil {
+		return FormResult{}, errors.New("tui: nil input")
+	}
+	if in.Kind != manifest.InputForm && in.Kind != manifest.InputText {
+		return FormResult{}, fmt.Errorf("tui: unsupported input kind %q (only form/text wired today)", in.Kind)
+	}
+	model := NewFormModel(itemID, itemName, in)
+	opts := []tea.ProgramOption{tea.WithOutput(out)}
+	_ = errOut
+	prog := tea.NewProgram(model, opts...)
+	final, runErr := prog.Run()
+	if runErr != nil {
+		return FormResult{}, fmt.Errorf("tui: %w", runErr)
+	}
+	fm, ok := final.(FormModel)
+	if !ok {
+		return FormResult{}, fmt.Errorf("tui: unexpected final model type %T", final)
+	}
+	_ = ctx
+	return fm.Result(), nil
+}
+
 // RunItemReview renders the per-item review screen for a profile's plan
 // and returns the user's final selection.
 func RunItemReview(

@@ -23,6 +23,15 @@ type Runner struct {
 	Bootstrapper *RepoBootstrapper        // optional; if nil, repo-bootstrap is skipped
 	Env          Env                      // distro/desktop for When evaluation
 	Out          io.Writer                // human-readable log; nil → discards
+
+	// Values supplies user-collected input for items whose manifest has an
+	// Input block. Keyed by item ID; the inner map is field-name → value.
+	// When the runner finds values for an item, it substitutes {field}
+	// tokens in the provider's Apply/Check commands before dispatch and
+	// clears Item.Input so the provider doesn't re-reject on the interactive
+	// gate. Items with Input but no Values here fall through to the
+	// provider's own guard (typically Config.Install refusing).
+	Values map[string]map[string]string
 }
 
 // Options controls a single Run invocation.
@@ -128,7 +137,8 @@ func (r *Runner) Run(ctx context.Context, sel Selection, opts Options) (*Summary
 		if c == nil {
 			continue // either skipped or failed during phase 1
 		}
-		if err := r.handleItem(ctx, id, r.Manifest.Items[id], c.provider, c.impl, opts, sum); err != nil {
+		it, prov := r.prepareItem(id, r.Manifest.Items[id], c.provider)
+		if err := r.handleItem(ctx, id, it, prov, c.impl, opts, sum); err != nil {
 			sum.Failed[id] = err.Error()
 		}
 	}
@@ -143,6 +153,26 @@ func (r *Runner) Run(ctx context.Context, sel Selection, opts Options) (*Summary
 		}
 	}
 	return sum, nil
+}
+
+// prepareItem returns copies of the item and provider ready for dispatch.
+// If Values supplies input for this item, {field} tokens are substituted
+// in provider.Apply/Check and the copy's Input is cleared so the provider
+// treats it as headless.
+func (r *Runner) prepareItem(id string, it manifest.Item, p manifest.Provider) (manifest.Item, manifest.Provider) {
+	if it.Input == nil {
+		return it, p
+	}
+	vals, ok := r.Values[id]
+	if !ok || len(vals) == 0 {
+		return it, p
+	}
+	itemCopy := it
+	itemCopy.Input = nil
+	provCopy := p
+	provCopy.Apply = substituteAll(p.Apply, vals)
+	provCopy.Check = substitute(p.Check, vals)
+	return itemCopy, provCopy
 }
 
 // choose walks an item's providers and returns the first (Provider, impl)

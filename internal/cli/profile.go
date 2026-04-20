@@ -113,9 +113,53 @@ func runProfile(cmd *cobra.Command, _ []string) error {
 			return nil
 		}
 
+		// Collect inputs for any selected item with an Input block.
+		values, cancelled, err := collectInputs(m, reviewChoice.ItemIDs)
+		if err != nil {
+			return err
+		}
+		if cancelled {
+			// User pressed esc in a form → bounce back to review.
+			// For now we restart the whole picker loop (simpler than
+			// persisting review state). Keeps the wizard predictable.
+			continue
+		}
+
 		// User confirmed: run as dry-run or apply.
-		return executeReview(out, m, reg, st, d, env, choice, reviewChoice)
+		return executeReview(out, m, reg, st, d, env, choice, reviewChoice, values)
 	}
+}
+
+// collectInputs walks the selected item IDs, and for each whose manifest
+// declares an Input (kind=form or kind=text), runs a FormModel and gathers
+// the user's responses. Returns a cancelled=true if the user pressed esc
+// on any form — the caller re-shows the picker/review in that case.
+func collectInputs(m *manifest.Manifest, itemIDs []string) (map[string]map[string]string, bool, error) {
+	values := make(map[string]map[string]string)
+	for _, id := range itemIDs {
+		it, ok := m.Items[id]
+		if !ok || it.Input == nil {
+			continue
+		}
+		if it.Input.Kind != manifest.InputForm && it.Input.Kind != manifest.InputText {
+			// choice / bool aren't wired yet; let the provider refuse with a clear error.
+			continue
+		}
+		r, err := tui.RunForm(context.Background(), id, it.Name, it.Input, os.Stderr, os.Stderr)
+		if err != nil {
+			return nil, false, err
+		}
+		if r.Quit {
+			return nil, true, fmt.Errorf("cancelled")
+		}
+		if r.Cancelled {
+			return nil, true, nil
+		}
+		if r.Confirmed {
+			values[id] = r.Values
+		}
+	}
+	return values, false, nil
 }
 
 func executeReview(
@@ -127,6 +171,7 @@ func executeReview(
 	env runner.Env,
 	choice tui.ProfileChoice,
 	rc tui.ReviewChoice,
+	values map[string]map[string]string,
 ) error {
 	apply := profileOpts.apply
 	if apply && os.Geteuid() != 0 {
@@ -150,6 +195,7 @@ func executeReview(
 		State:        st,
 		Bootstrapper: bootstrapper,
 		Env:          env,
+		Values:       values,
 		Out:          out,
 		StateFn: func(s *state.State) error {
 			return state.Save("", s)
