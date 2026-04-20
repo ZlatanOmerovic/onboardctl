@@ -9,6 +9,9 @@ vendor/
 *.out
 coverage.*
 
+# Generated at release time (shell completions + manpages)
+/dist/extras/
+
 # Editor / OS cruft
 .vscode/
 .idea/

@@ -37,3 +37,12 @@ func init() {
 func Execute() error {
 	return rootCmd.Execute()
 }
+
+// Root returns the configured cobra root command. It is exposed for
+// out-of-process consumers that need the command tree — today that's
+// cmd/gen, which generates shell completions and manpages at release
+// time. Not intended for library use; the returned *cobra.Command is
+// shared state.
+func Root() *cobra.Command {
+	return rootCmd
+}

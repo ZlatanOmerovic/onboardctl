@@ -11,7 +11,7 @@ LDFLAGS := -s -w \
 	-X github.com/ZlatanOmerovic/onboardctl/internal/cli.Commit=$(COMMIT) \
 	-X github.com/ZlatanOmerovic/onboardctl/internal/cli.BuildDate=$(BUILD_DATE)
 
-.PHONY: help build install test vet fmt tidy lint run clean
+.PHONY: help build install test vet fmt tidy lint run clean extras release-dry
 
 help: ## List targets
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-10s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -44,6 +44,11 @@ clean: ## Remove build artefacts
 	rm -f $(BIN)
 	rm -rf dist/
 
-release-dry: ## Locally simulate a release without publishing (needs goreleaser)
+extras: ## Generate shell completions + manpages under dist/extras/
+	@rm -rf dist/extras
+	@mkdir -p dist
+	go run ./cmd/gen dist/extras
+
+release-dry: extras ## Locally simulate a release without publishing (needs goreleaser)
 	@command -v goreleaser >/dev/null || { echo "install goreleaser: https://goreleaser.com/install"; exit 1; }
 	goreleaser release --snapshot --clean --skip=publish,sign

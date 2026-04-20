@@ -17,6 +17,10 @@ project_name: onboardctl
 before:
   hooks:
     - go mod tidy
+    # Generate shell completions (bash / zsh / fish) and a manpage per
+    # subcommand. Archive files: blocks below pick these up so every
+    # release tarball ships them alongside the binary.
+    - go run ./cmd/gen dist/extras
 
 builds:
   - id: onboardctl
@@ -49,6 +53,10 @@ archives:
       - LICENSE
       - README.md
       - CHANGELOG.md
+      - src: 'dist/extras/completions/*'
+        dst: completions
+      - src: 'dist/extras/man/*'
+        dst: manpages
 
 checksum:
   # Filename matches install.sh's ${BIN_NAME}_${version}_checksums.txt.
