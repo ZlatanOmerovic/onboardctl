@@ -12,30 +12,34 @@ import (
 	"github.com/ZlatanOmerovic/onboardctl/internal/state"
 )
 
-// Runner orchestrates the install flow: it resolves selections, consults
-// the provider registry for Check/Install, and persists results to state.
+// Runner orchestrates the install flow: it resolves selections, evaluates
+// When gates, bootstraps any apt repos referenced by chosen providers,
+// consults the provider registry for Check/Install, and persists results
+// to state.
 type Runner struct {
-	Manifest *manifest.Manifest
-	Registry provider.Registry
-	State    *state.State
-	StateFn  func(*state.State) error // write-back hook; defaults to state.Save
-	Out      io.Writer                // human-readable log; nil → discards
+	Manifest     *manifest.Manifest
+	Registry     provider.Registry
+	State        *state.State
+	StateFn      func(*state.State) error // write-back; defaults to noop if nil
+	Bootstrapper *RepoBootstrapper        // optional; if nil, repo-bootstrap is skipped
+	Env          Env                      // distro/desktop for When evaluation
+	Out          io.Writer                // human-readable log; nil → discards
 }
 
 // Options controls a single Run invocation.
 type Options struct {
-	DryRun bool
-	// Profile captures the high-level selection name for logging / state.
-	Profile string
+	DryRun  bool
+	Profile string // recorded in state; informational
 }
 
 // Summary is what Run returns so the CLI can print a final report.
 type Summary struct {
-	Selected    []string          // ordered list of item IDs in the plan
-	Installed   []string          // items installed or reinstalled this run
-	AlreadyHad  []string          // items Check() reported already installed
-	Failed      map[string]string // item -> error message
-	DryRun      bool
+	Selected   []string          // ordered list of item IDs in the plan
+	Installed  []string          // items installed (or "would install" in dry-run)
+	AlreadyHad []string          // items Check() reported already installed
+	Failed     map[string]string // item -> error message
+	Skipped    []string          // items skipped because When didn't match
+	DryRun     bool
 }
 
 // NewSummary makes a zeroed summary.
@@ -45,7 +49,7 @@ func NewSummary() *Summary {
 
 // Run executes the install pipeline for a selection. Individual item
 // failures are recorded in Summary.Failed; the pipeline does not abort
-// unless a framework-level error (manifest load, resolver, etc.) occurs.
+// unless a framework-level error (manifest, resolver, bootstrap) occurs.
 func (r *Runner) Run(ctx context.Context, sel Selection, opts Options) (*Summary, error) {
 	if r.Manifest == nil {
 		return nil, errors.New("runner: nil manifest")
@@ -66,6 +70,53 @@ func (r *Runner) Run(ctx context.Context, sel Selection, opts Options) (*Summary
 	sum.Selected = ids
 	sum.DryRun = opts.DryRun
 
+	// Phase 1: for each item, determine the chosen provider (first whose
+	// When matches AND kind is registered). Collect repos to bootstrap.
+	type chosen struct {
+		provider manifest.Provider
+		impl     provider.Provider
+	}
+	chosenFor := make(map[string]*chosen, len(ids))
+	var repoNames []string
+	seenRepo := make(map[string]bool)
+
+	for _, id := range ids {
+		it := r.Manifest.Items[id]
+		if !Match(it.When, r.Env) {
+			sum.Skipped = append(sum.Skipped, id)
+			r.logf("  - %-20s skipped (when doesn't match)\n", id)
+			continue
+		}
+		p, impl := r.choose(it)
+		if p == nil {
+			sum.Failed[id] = fmt.Sprintf("item %q: no registered provider for kinds %s",
+				id, kindList(it.Providers))
+			continue
+		}
+		chosenFor[id] = &chosen{provider: *p, impl: impl}
+		if p.Repo != "" && !seenRepo[p.Repo] {
+			seenRepo[p.Repo] = true
+			repoNames = append(repoNames, p.Repo)
+		}
+	}
+
+	// Phase 2: bootstrap referenced repos (if we have a bootstrapper).
+	// On dry-run, announce but don't materialise.
+	if r.Bootstrapper != nil && len(repoNames) > 0 {
+		r.logf("\nRepos needed: %v\n", repoNames)
+		if !opts.DryRun {
+			for _, name := range repoNames {
+				if _, err := r.Bootstrapper.Ensure(ctx, name, r.Env); err != nil {
+					return sum, fmt.Errorf("bootstrap repo %s: %w", name, err)
+				}
+			}
+			if err := r.Bootstrapper.AptUpdateIfNeeded(ctx); err != nil {
+				return sum, err
+			}
+		}
+	}
+
+	// Phase 3: per-item Check / Install.
 	runEntry := state.Run{
 		StartedAt: time.Now().UTC(),
 		Profile:   opts.Profile,
@@ -74,8 +125,11 @@ func (r *Runner) Run(ctx context.Context, sel Selection, opts Options) (*Summary
 	}
 
 	for _, id := range ids {
-		item := r.Manifest.Items[id]
-		if err := r.handleItem(ctx, id, item, opts, sum); err != nil {
+		c := chosenFor[id]
+		if c == nil {
+			continue // either skipped or failed during phase 1
+		}
+		if err := r.handleItem(ctx, id, r.Manifest.Items[id], c.provider, c.impl, opts, sum); err != nil {
 			sum.Failed[id] = err.Error()
 		}
 	}
@@ -92,31 +146,26 @@ func (r *Runner) Run(ctx context.Context, sel Selection, opts Options) (*Summary
 	return sum, nil
 }
 
-// handleItem walks the providers of one item, picks the first whose
-// kind is registered (Phase 2 skips When evaluation; that arrives in
-// Phase 3 with full TUI context), checks and either skips or installs.
-func (r *Runner) handleItem(ctx context.Context, id string, it manifest.Item,
-	opts Options, sum *Summary) error {
-
-	if len(it.Providers) == 0 {
-		return fmt.Errorf("item %q has no providers", id)
-	}
-
-	var chosen *manifest.Provider
-	var impl provider.Provider
+// choose walks an item's providers and returns the first (Provider, impl)
+// whose When matches the environment AND whose kind is in the registry.
+func (r *Runner) choose(it manifest.Item) (*manifest.Provider, provider.Provider) {
 	for i := range it.Providers {
 		p := &it.Providers[i]
-		if got := r.Registry.Lookup(p.Type); got != nil {
-			chosen = p
-			impl = got
-			break
+		if !Match(p.When, r.Env) {
+			continue
+		}
+		if impl := r.Registry.Lookup(p.Type); impl != nil {
+			return p, impl
 		}
 	}
-	if chosen == nil {
-		return fmt.Errorf("item %q: no registered provider for kinds %s", id, kindList(it.Providers))
-	}
+	return nil, nil
+}
 
-	st, err := impl.Check(ctx, it, *chosen)
+func (r *Runner) handleItem(ctx context.Context, id string, it manifest.Item,
+	p manifest.Provider, impl provider.Provider,
+	opts Options, sum *Summary) error {
+
+	st, err := impl.Check(ctx, it, p)
 	if err != nil {
 		return fmt.Errorf("check: %w", err)
 	}
@@ -127,18 +176,17 @@ func (r *Runner) handleItem(ctx context.Context, id string, it manifest.Item,
 	}
 
 	if opts.DryRun {
-		r.logf("  + %-20s would install via %s (%s)\n", id, chosen.Type, describeProvider(*chosen))
+		r.logf("  + %-20s would install via %s (%s)\n", id, p.Type, describeProvider(p))
 		sum.Installed = append(sum.Installed, id)
 		return nil
 	}
 
-	r.logf("  + %-20s installing via %s...\n", id, chosen.Type)
-	if err := impl.Install(ctx, it, *chosen); err != nil {
+	r.logf("  + %-20s installing via %s...\n", id, p.Type)
+	if err := impl.Install(ctx, it, p); err != nil {
 		return err
 	}
-	// Re-check so state.yaml records the real post-install version.
-	st, _ = impl.Check(ctx, it, *chosen)
-	r.State.RecordInstall(id, chosen.Type, st.Version, state.ByOnboardctl, time.Now().UTC())
+	st, _ = impl.Check(ctx, it, p)
+	r.State.RecordInstall(id, p.Type, st.Version, state.ByOnboardctl, time.Now().UTC())
 	sum.Installed = append(sum.Installed, id)
 	return nil
 }
