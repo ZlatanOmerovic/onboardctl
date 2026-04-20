@@ -114,8 +114,16 @@ func Load(path string) (*State, error) {
 		return nil, fmt.Errorf("read state %s: %w", path, err)
 	}
 
+	// Walk migrations if the on-disk file is older than SchemaVersion.
+	// migrate() is a no-op for current-version docs but gives us a
+	// pre-wired upgrade path for the first schema bump.
+	migrated, _, err := migrate(data)
+	if err != nil {
+		return nil, fmt.Errorf("migrate state %s: %w", path, err)
+	}
+
 	s := &State{}
-	if err := yaml.Unmarshal(data, s); err != nil {
+	if err := yaml.Unmarshal(migrated, s); err != nil {
 		return nil, fmt.Errorf("parse state %s: %w", path, err)
 	}
 	if s.Version == 0 {
