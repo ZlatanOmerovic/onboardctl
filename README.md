@@ -72,7 +72,20 @@ providers know nothing about profiles.
 | `onboardctl init`        | ⏳ Phase 3+ | TUI wizard: terminal / shell / prompt / theme           |
 | `onboardctl export`      | ⏳ Phase 4 | Emit current state as a shareable extras YAML           |
 
-## Quickstart (developer)
+## Quickstart
+
+**Install (users):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ZlatanOmerovic/onboardctl/main/scripts/install.sh | bash
+```
+
+Installs to `~/.local/bin/onboardctl`. No sudo. Options:
+`--install-dir PATH` · `--version vX.Y.Z` · `--help`. The installer
+pulls the latest GitHub release matching your arch (amd64 / arm64)
+and verifies SHA-256 when a checksum file is present.
+
+**Build from source (developers):**
 
 ```bash
 git clone https://github.com/ZlatanOmerovic/onboardctl.git
