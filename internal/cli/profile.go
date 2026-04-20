@@ -144,8 +144,8 @@ func collectInputs(m *manifest.Manifest, itemIDs []string) (map[string]map[strin
 		if !ok || it.Input == nil {
 			continue
 		}
-		if it.Input.Kind != manifest.InputForm && it.Input.Kind != manifest.InputText {
-			// choice / bool aren't wired yet; let the provider refuse with a clear error.
+		if it.Input.Kind == manifest.InputBool {
+			// bool isn't wired yet; let the provider refuse with a clear error.
 			continue
 		}
 		r, err := tui.RunForm(context.Background(), id, it.Name, it.Input, os.Stderr, os.Stderr)

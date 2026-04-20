@@ -39,9 +39,15 @@ func RunInstallProgress(
 	return prog, wait
 }
 
-// RunForm renders a single input form for one manifest item with an
-// Input block. Used between the review screen and dispatch to collect
-// user-supplied values for config items like git-identity.
+// RunForm renders an input UI for one manifest item and returns the
+// user's values. Dispatches by Input.Kind:
+//
+//   - form / text  → FormModel (multi-field / single-field text input)
+//   - choice       → ChoiceModel (filterable list, backed by bubbles/list)
+//   - bool         → not yet wired
+//
+// The caller passes the manifest item's Input unchanged; RunForm handles
+// resolving Source commands and building the appropriate model.
 func RunForm(
 	ctx context.Context,
 	itemID, itemName string,
@@ -51,12 +57,24 @@ func RunForm(
 	if in == nil {
 		return FormResult{}, errors.New("tui: nil input")
 	}
-	if in.Kind != manifest.InputForm && in.Kind != manifest.InputText {
-		return FormResult{}, fmt.Errorf("tui: unsupported input kind %q (only form/text wired today)", in.Kind)
+	switch in.Kind {
+	case manifest.InputForm, manifest.InputText:
+		return runFormModel(itemID, itemName, in, out)
+	case manifest.InputChoice:
+		choices, err := ResolveChoices(ctx, in)
+		if err != nil {
+			return FormResult{}, err
+		}
+		return runChoiceModel(itemID, itemName, in, choices, out)
+	default:
+		return FormResult{}, fmt.Errorf("tui: input kind %q not yet supported (wait for a later release)", in.Kind)
 	}
+	// _ = errOut   // reserved; keep in case we split stderr later
+}
+
+func runFormModel(itemID, itemName string, in *manifest.Input, out io.Writer) (FormResult, error) {
 	model := NewFormModel(itemID, itemName, in)
 	opts := []tea.ProgramOption{tea.WithOutput(out)}
-	_ = errOut
 	prog := tea.NewProgram(model, opts...)
 	final, runErr := prog.Run()
 	if runErr != nil {
@@ -66,8 +84,22 @@ func RunForm(
 	if !ok {
 		return FormResult{}, fmt.Errorf("tui: unexpected final model type %T", final)
 	}
-	_ = ctx
 	return fm.Result(), nil
+}
+
+func runChoiceModel(itemID, itemName string, in *manifest.Input, choices []string, out io.Writer) (FormResult, error) {
+	model := NewChoiceModel(itemID, itemName, in, choices)
+	opts := []tea.ProgramOption{tea.WithOutput(out), tea.WithAltScreen()}
+	prog := tea.NewProgram(model, opts...)
+	final, runErr := prog.Run()
+	if runErr != nil {
+		return FormResult{}, fmt.Errorf("tui: %w", runErr)
+	}
+	cm, ok := final.(ChoiceModel)
+	if !ok {
+		return FormResult{}, fmt.Errorf("tui: unexpected final model type %T", final)
+	}
+	return cm.Result(), nil
 }
 
 // RunItemReview renders the per-item review screen for a profile's plan
