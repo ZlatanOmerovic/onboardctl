@@ -11,6 +11,33 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// RunItemReview renders the per-item review screen for a profile's plan
+// and returns the user's final selection.
+func RunItemReview(
+	ctx context.Context,
+	profileName, profileID string,
+	plan *runner.Plan,
+	out io.Writer, errOut io.Writer,
+) (ReviewChoice, error) {
+	if plan == nil {
+		return ReviewChoice{}, errors.New("tui: nil plan")
+	}
+	model := NewReviewModel(profileName, profileID, plan)
+	opts := []tea.ProgramOption{tea.WithOutput(out)}
+	_ = errOut
+	prog := tea.NewProgram(model, opts...)
+	final, runErr := prog.Run()
+	if runErr != nil {
+		return ReviewChoice{}, fmt.Errorf("tui: %w", runErr)
+	}
+	rm, ok := final.(ReviewModel)
+	if !ok {
+		return ReviewChoice{}, fmt.Errorf("tui: unexpected final model type %T", final)
+	}
+	_ = ctx
+	return rm.Choice(), nil
+}
+
 // RunProfilePicker shows the profile picker and returns the user's choice.
 // The caller supplies the loaded manifest plus a Resolver callback that
 // lets the picker pre-compute item counts per profile (so the view renders

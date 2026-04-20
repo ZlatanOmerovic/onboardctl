@@ -2,7 +2,6 @@ package runner
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -52,10 +51,10 @@ func NewSummary() *Summary {
 // unless a framework-level error (manifest, resolver, bootstrap) occurs.
 func (r *Runner) Run(ctx context.Context, sel Selection, opts Options) (*Summary, error) {
 	if r.Manifest == nil {
-		return nil, errors.New("runner: nil manifest")
+		return nil, errNilManifest
 	}
 	if r.Registry == nil {
-		return nil, errors.New("runner: nil registry")
+		return nil, errNilRegistry
 	}
 	if r.State == nil {
 		r.State = state.New()
