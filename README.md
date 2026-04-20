@@ -67,9 +67,9 @@ providers know nothing about profiles.
 | `onboardctl status`      | ✅ Phase 1 | Print detected env + loaded-manifest summary            |
 | `onboardctl lint [path]` | ✅ Phase 1 | Validate a YAML manifest against the bundled JSON Schema |
 | `onboardctl version`     | ✅ Phase 1 | Print version, commit, build date                        |
-| `onboardctl install`     | ⏳ Phase 2 | Headless install by item / bundle / profile             |
-| `onboardctl init`        | ⏳ Phase 3 | TUI wizard: terminal / shell / prompt / theme           |
-| `onboardctl profile`     | ⏳ Phase 3 | TUI wizard: profile → bundles → items                   |
+| `onboardctl install`     | ✅ Phase 2 | Headless install by item / bundle / profile             |
+| `onboardctl profile`     | ✅ Phase 3 | Interactive profile picker (TUI)                         |
+| `onboardctl init`        | ⏳ Phase 3+ | TUI wizard: terminal / shell / prompt / theme           |
 | `onboardctl export`      | ⏳ Phase 4 | Emit current state as a shareable extras YAML           |
 
 ## Quickstart (developer)
@@ -119,8 +119,9 @@ onboardctl lint ~/.config/onboardctl/extras.yaml
 | Phase                | Scope                                                                                                 |
 |----------------------|-------------------------------------------------------------------------------------------------------|
 | **1 — foundation** ✅ | Data model; `status` / `lint`; distro + desktop detection                                             |
-| 2 — installers       | Real `apt` / `flatpak` / `binary_release` / `config` / `composer_global` / `npm_global` / `shell` providers; headless `install` subcommand; state file |
-| 3 — TUI              | Bubble Tea wizards (`init`, `profile`); per-item toggles; four status markers (installed-by-us / external / drift / not-installed) |
+| **2 — installers** ✅ | `apt` / `shell` / `config` / `binary_release` / `composer_global` providers; `install` subcommand; state file; When gates; apt repo bootstrap |
+| **3 — TUI (MVP)** ✅  | Bubble Tea `profile` picker with Catppuccin Mocha palette; item counts per profile   |
+| 3+ — TUI follow-ups   | Per-item toggles; config-input forms (timezone, git identity); four status markers on items; live install progress |
 | 4 — release          | `curl \| sh` bootstrap, GitHub Actions releases, screenshots, Homebrew tap (maybe), Debian `.deb`     |
 
 ## Non-goals (and the tools that cover them)
