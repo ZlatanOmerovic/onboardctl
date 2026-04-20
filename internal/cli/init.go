@@ -18,8 +18,9 @@ import (
 )
 
 var initOpts struct {
-	extras string
-	apply  bool
+	extras        string
+	apply         bool
+	skipInstalled bool
 }
 
 var initCmd = &cobra.Command{
@@ -47,6 +48,7 @@ wezterm / ghostty / foot are follow-up iterations. The picks here cover
 func init() {
 	initCmd.Flags().StringVar(&initOpts.extras, "extras", "", "path to user extras YAML (default: XDG)")
 	initCmd.Flags().BoolVar(&initOpts.apply, "apply", false, "apply the selection instead of dry-run (requires sudo)")
+	initCmd.Flags().BoolVar(&initOpts.skipInstalled, "skip-installed", false, "skip a pick entirely when one of its options is already installed (suitable for scripted reruns)")
 	rootCmd.AddCommand(initCmd)
 }
 
@@ -74,20 +76,31 @@ func runInit(cmd *cobra.Command, _ []string) error {
 	// Step 0: welcome screen — detected environment + install state.
 	renderWelcome(out, d, installed)
 
+	// When --skip-installed is set, bypass an entire category if any of
+	// its options is already on the system. Result: re-running init on a
+	// configured machine shows pickers only for categories the user
+	// hasn't filled in yet.
+	skipIfInstalled := func(pick func(io.Writer, map[string]bool) (tui.OneOfResult, error), ids ...string) (tui.OneOfResult, error) {
+		if initOpts.skipInstalled && anyTrue(installed, ids...) {
+			return tui.OneOfResult{Value: "", Label: "Keep current"}, nil
+		}
+		return pick(os.Stderr, installed)
+	}
+
 	// Step 1: terminal
-	terminal, err := pickTerminal(os.Stderr, installed)
+	terminal, err := skipIfInstalled(pickTerminal, "kitty", "alacritty")
 	if err != nil || terminal.Cancelled {
 		return err // nil on graceful cancel
 	}
 
 	// Step 2: shell
-	shell, err := pickShell(os.Stderr, installed)
+	shell, err := skipIfInstalled(pickShell, "zsh", "fish")
 	if err != nil || shell.Cancelled {
 		return nil
 	}
 
 	// Step 3: prompt
-	prompt, err := pickPrompt(os.Stderr, installed)
+	prompt, err := skipIfInstalled(pickPrompt, "starship")
 	if err != nil || prompt.Cancelled {
 		return nil
 	}
@@ -268,6 +281,18 @@ func markerFor(installed bool) string {
 		return "✓"
 	}
 	return ""
+}
+
+// anyTrue reports whether any of the named keys maps to true in the
+// install-state map. Used by --skip-installed to decide whether to
+// bypass a picker.
+func anyTrue(state map[string]bool, keys ...string) bool {
+	for _, k := range keys {
+		if state[k] {
+			return true
+		}
+	}
+	return false
 }
 
 func pickTerminal(out io.Writer, installed map[string]bool) (tui.OneOfResult, error) {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/user"
 
 	"github.com/spf13/cobra"
 
@@ -76,6 +77,8 @@ func runProfile(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("load state: %w", err)
 	}
 
+	renderProfileWelcome(out, m, d, st)
+
 	// Loop picker ↔ review until user confirms or quits.
 	for {
 		choice, err := tui.RunProfilePicker(context.Background(), m, os.Stderr, os.Stderr)
@@ -132,6 +135,57 @@ func runProfile(cmd *cobra.Command, _ []string) error {
 		// User confirmed: run as dry-run or apply.
 		return executeReview(out, m, reg, st, d, env, choice, reviewChoice, values)
 	}
+}
+
+// renderProfileWelcome prints a short preamble before the picker loop
+// so the user can confirm at a glance which machine they're on, what
+// the manifest knows about, and whether onboardctl has touched anything
+// on this box before.
+func renderProfileWelcome(out io.Writer, m *manifest.Manifest, d system.Distro, st *state.State) {
+	u, _ := user.Current()
+	name := "friend"
+	if u != nil {
+		name = u.Username
+	}
+
+	fmt.Fprintln(out, "")
+	fmt.Fprintln(out, "──────────────────────────────────────────────────────────────")
+	fmt.Fprintf(out, "  onboardctl profile — welcome, %s\n", name)
+	fmt.Fprintln(out, "──────────────────────────────────────────────────────────────")
+	fmt.Fprintln(out, "")
+	fmt.Fprintf(out, "  Distro:   %s %s (%s) %s\n", d.Name, d.Version, d.Codename, d.Arch)
+	fmt.Fprintf(out, "  Desktop:  %s\n", system.DetectDesktop())
+	fmt.Fprintf(out, "  Manifest: %d profiles · %d bundles · %d items · %d repos\n",
+		len(m.Profiles), len(m.Bundles), len(m.Items), len(m.Repos))
+
+	tracked := countTrackedInstalls(st)
+	if tracked > 0 {
+		lastProfile := st.Profile
+		if lastProfile == "" {
+			lastProfile = "none"
+		}
+		fmt.Fprintf(out, "  State:    %d item(s) tracked · last profile: %s\n", tracked, lastProfile)
+	} else {
+		fmt.Fprintln(out, "  State:    nothing tracked yet (first run on this machine?)")
+	}
+	fmt.Fprintln(out, "")
+	fmt.Fprintln(out, "  Pick a profile to review. Use q to cancel at any point.")
+	fmt.Fprintln(out, "")
+}
+
+// countTrackedInstalls returns the number of state.yaml entries marked
+// installed by onboardctl.
+func countTrackedInstalls(st *state.State) int {
+	if st == nil {
+		return 0
+	}
+	n := 0
+	for _, rec := range st.Items {
+		if rec.Status == state.StatusInstalled && rec.InstalledBy == state.ByOnboardctl {
+			n++
+		}
+	}
+	return n
 }
 
 // collectInputs walks the selected item IDs, and for each whose manifest
