@@ -1,0 +1,144 @@
+# onboardctl bundled default manifest.
+#
+# This is the curated starting set shipped inside the binary. User additions
+# go in ~/.config/onboardctl/extras.yaml and merge on top of this file.
+#
+# Phase 1 intentionally ships a small but representative slice: enough to
+# prove the schema exercises every field, not enough to cover the real app
+# catalogue (Phase 2 expands it).
+
+version: 1
+
+repos:
+  sury_php:
+    kind: apt
+    keyring: https://packages.sury.org/php/apt.gpg
+    keyring_dearmor: true
+    source: "deb [signed-by={keyring}] https://packages.sury.org/php/ {codename} main"
+    when:
+      distro_family: [debian]
+
+items:
+  # -------- base-system --------
+  jq:
+    name: jq
+    description: Command-line JSON processor.
+    bundle: base-system
+    providers:
+      - type: apt
+        package: jq
+
+  git-lfs:
+    name: Git LFS
+    description: Large-file support for git.
+    bundle: base-system
+    providers:
+      - type: apt
+        package: git-lfs
+    post_install:
+      - "Run 'git lfs install' once per clone that uses LFS."
+
+  fastfetch:
+    name: fastfetch
+    description: Fast system-info tool; modern neofetch replacement.
+    bundle: base-system
+    providers:
+      - type: apt
+        package: fastfetch
+
+  # -------- terminal-stack --------
+  kitty:
+    name: Kitty terminal
+    description: GPU-accelerated terminal emulator with native Wayland support.
+    bundle: terminal-stack
+    providers:
+      - type: apt
+        package: kitty
+
+  zsh:
+    name: Zsh shell
+    description: The z shell.
+    bundle: terminal-stack
+    providers:
+      - type: apt
+        package: zsh
+
+  # -------- media --------
+  vlc:
+    name: VLC media player
+    description: Plays essentially any audio or video file.
+    bundle: media
+    providers:
+      - type: apt
+        package: vlc
+
+  # -------- system-essentials (config-kind items, not installs) --------
+  system-timezone:
+    name: System timezone
+    description: Set the machine's timezone via timedatectl.
+    bundle: system-essentials
+    input:
+      kind: choice
+      prompt: "Timezone?"
+      source: "timedatectl list-timezones"
+    providers:
+      - type: config
+        apply:
+          - "timedatectl set-timezone {value}"
+        check: "timedatectl show -p Timezone --value"
+
+  git-identity:
+    name: Git identity
+    description: Global git user.name and user.email.
+    bundle: system-essentials
+    input:
+      kind: form
+      prompt: "Set your global git identity"
+      fields:
+        - { name: name,  prompt: "Full name" }
+        - { name: email, prompt: "Git email" }
+    providers:
+      - type: config
+        apply:
+          - "git config --global user.name {name}"
+          - "git config --global user.email {email}"
+        check: "git config --global --get user.email"
+
+bundles:
+  base-system:
+    name: Base system tools
+    description: Tools every dev box wants.
+    items: [jq, git-lfs, fastfetch]
+
+  terminal-stack:
+    name: Terminal stack
+    description: Modern terminal emulator and shell.
+    items: [kitty, zsh]
+
+  media:
+    name: Media
+    description: Audio and video playback.
+    items: [vlc]
+
+  system-essentials:
+    name: System essentials
+    description: First-boot configuration (timezone, git identity, ...).
+    items: [system-timezone, git-identity]
+
+profiles:
+  essentials:
+    name: Essentials
+    description: The minimum to make a fresh Debian desktop pleasant.
+    bundles: [base-system, terminal-stack, media, system-essentials]
+
+  fullstack-web:
+    name: Fullstack web
+    description: PHP, Node, Docker, editors — Laravel-friendly.
+    extends: essentials
+    bundles: []  # Phase 2 adds runtime-php, runtime-node, dev-tools, editors.
+
+  everything:
+    name: Everything
+    description: Kitchen sink; everything the manifest knows.
+    extends: fullstack-web
+    bundles: []  # Phase 2 layers in ops, messengers, remote-access, privacy.
