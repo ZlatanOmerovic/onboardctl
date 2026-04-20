@@ -67,3 +67,58 @@ jobs:
         with:
           version: latest
           args: --timeout=3m
+
+  # Runs the built binary inside a plain debian:trixie container and
+  # exercises the subcommands that don't require root. Catches manifest
+  # regressions (bundle references an item that doesn't exist, When gates
+  # that exclude everything on Debian, etc.) before they ship.
+  integration-debian:
+    name: integration (debian:trixie)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+          cache: true
+
+      - name: build static binary
+        run: |
+          CGO_ENABLED=0 go build -trimpath -o onboardctl ./cmd/onboardctl
+
+      - name: smoke test in debian:trixie
+        run: |
+          docker run --rm -v "$PWD:/src:ro" -w /src debian:trixie bash -eu -o pipefail -c '
+            apt-get update -qq
+            # Minimum runtime deps for doctor to find required tools.
+            apt-get install -y --no-install-recommends ca-certificates curl gnupg dpkg tar bash > /dev/null
+
+            echo "=== version ==="
+            ./onboardctl version
+
+            echo
+            echo "=== doctor ==="
+            # doctor exits non-zero on fails; warns are fine inside a container.
+            ./onboardctl doctor || true
+
+            echo
+            echo "=== status ==="
+            ./onboardctl status
+
+            echo
+            echo "=== install --profile essentials --dry-run ==="
+            ./onboardctl install --profile essentials --dry-run
+
+            echo
+            echo "=== install --profile fullstack-web --dry-run ==="
+            ./onboardctl install --profile fullstack-web --dry-run
+
+            echo
+            echo "=== export (should fail gracefully with no state) ==="
+            ./onboardctl export 2>&1 || true
+
+            echo
+            echo "=== gc --dry-run (empty state is fine) ==="
+            ./onboardctl gc --dry-run 2>&1 || true
+          '
