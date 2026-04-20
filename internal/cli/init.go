@@ -65,23 +65,29 @@ func runInit(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("unsupported distro %q (Debian family only)", d.ID)
 	}
 
-	// Step 0: welcome screen — just a quick environment summary.
-	renderWelcome(out, d)
+	// Pre-flight: probe the install state of every candidate item so each
+	// picker can annotate options with ✓ for "already installed". Re-running
+	// init on a machine that already has the target packages becomes a
+	// no-op tour instead of a blind wizard.
+	installed := probeInitCandidates(m, d)
+
+	// Step 0: welcome screen — detected environment + install state.
+	renderWelcome(out, d, installed)
 
 	// Step 1: terminal
-	terminal, err := pickTerminal(os.Stderr)
+	terminal, err := pickTerminal(os.Stderr, installed)
 	if err != nil || terminal.Cancelled {
 		return err // nil on graceful cancel
 	}
 
 	// Step 2: shell
-	shell, err := pickShell(os.Stderr)
+	shell, err := pickShell(os.Stderr, installed)
 	if err != nil || shell.Cancelled {
 		return nil
 	}
 
 	// Step 3: prompt
-	prompt, err := pickPrompt(os.Stderr)
+	prompt, err := pickPrompt(os.Stderr, installed)
 	if err != nil || prompt.Cancelled {
 		return nil
 	}
@@ -114,7 +120,7 @@ func runInit(cmd *cobra.Command, _ []string) error {
 	return executeInit(out, m, d, itemIDs)
 }
 
-func renderWelcome(out io.Writer, d system.Distro) {
+func renderWelcome(out io.Writer, d system.Distro, installed map[string]bool) {
 	u, _ := user.Current()
 	name := "friend"
 	if u != nil {
@@ -125,35 +131,167 @@ func renderWelcome(out io.Writer, d system.Distro) {
 	fmt.Fprintf(out, "  onboardctl init — welcome, %s\n", name)
 	fmt.Fprintln(out, "──────────────────────────────────────────────────────────────")
 	fmt.Fprintln(out, "")
-	fmt.Fprintf(out, "  Distro:  %s %s (%s) %s\n", d.Name, d.Version, d.Codename, d.Arch)
-	fmt.Fprintf(out, "  Desktop: %s\n", system.DetectDesktop())
+	fmt.Fprintf(out, "  Distro:   %s %s (%s) %s\n", d.Name, d.Version, d.Codename, d.Arch)
+	fmt.Fprintf(out, "  Desktop:  %s\n", system.DetectDesktop())
+	fmt.Fprintf(out, "  Shell:    %s%s\n", currentShellName(), loginShellHint())
+	fmt.Fprintf(out, "  Terminal: %s\n", currentTerminalName())
+
+	// Install-state one-liner: tell the user upfront which of the
+	// init-wizard candidates are already present. ✓ for yes, dim for no.
+	installedList := listInstalled(installed, []string{"kitty", "alacritty", "zsh", "fish", "starship"})
+	if installedList != "" {
+		fmt.Fprintf(out, "  Detected: %s\n", installedList)
+	}
+
 	fmt.Fprintln(out, "")
-	fmt.Fprintln(out, "  Four questions coming up. 'Keep current' is always an option.")
+	fmt.Fprintln(out, "  Three quick picks. 'Keep current' is always an option.")
 	fmt.Fprintln(out, "")
 }
 
-func pickTerminal(out io.Writer) (tui.OneOfResult, error) {
+// currentShellName returns the bare name of the user's login shell
+// (e.g. "zsh", "bash", "fish") from /etc/passwd.
+func currentShellName() string {
+	u, err := user.Current()
+	if err != nil || u == nil {
+		return "unknown"
+	}
+	sh := os.Getenv("SHELL")
+	if sh == "" {
+		return "unknown"
+	}
+	// Trim dir: "/usr/bin/zsh" -> "zsh"
+	base := sh
+	for i := len(sh) - 1; i >= 0; i-- {
+		if sh[i] == '/' {
+			base = sh[i+1:]
+			break
+		}
+	}
+	return base
+}
+
+func loginShellHint() string {
+	// Hint placeholder; SHELL usually matches the login shell. Kept
+	// as a separate helper so later versions can compare with
+	// getent passwd output if we want to be precise about default vs
+	// current interactive shell.
+	return ""
+}
+
+// currentTerminalName infers the terminal emulator from env hints that
+// terminals commonly set for processes they launch.
+func currentTerminalName() string {
+	switch {
+	case os.Getenv("KITTY_WINDOW_ID") != "":
+		return "kitty"
+	case os.Getenv("ALACRITTY_SOCKET") != "", os.Getenv("ALACRITTY_LOG") != "":
+		return "alacritty"
+	case os.Getenv("WEZTERM_PANE") != "":
+		return "wezterm"
+	case os.Getenv("GHOSTTY_RESOURCES_DIR") != "":
+		return "ghostty"
+	case os.Getenv("VTE_VERSION") != "":
+		return "gnome-terminal / vte-based"
+	}
+	if t := os.Getenv("TERM_PROGRAM"); t != "" {
+		return t
+	}
+	if t := os.Getenv("TERM"); t != "" {
+		return t
+	}
+	return "unknown"
+}
+
+// listInstalled produces a compact comma-separated list with markers so
+// the welcome screen can show detected state in one line.
+func listInstalled(state map[string]bool, ids []string) string {
+	var parts []string
+	for _, id := range ids {
+		if state[id] {
+			parts = append(parts, "✓ "+id)
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return joinComma(parts)
+}
+
+func joinComma(ss []string) string {
+	out := ""
+	for i, s := range ss {
+		if i > 0 {
+			out += ", "
+		}
+		out += s
+	}
+	return out
+}
+
+// probeInitCandidates runs Check on each candidate item via the normal
+// provider pipeline and returns a map of itemID → installed bool. Any
+// manifest item not present in the loaded manifest is silently skipped
+// (user may have dropped it from extras).
+func probeInitCandidates(m *manifest.Manifest, d system.Distro) map[string]bool {
+	out := map[string]bool{}
+	if m == nil {
+		return out
+	}
+	candidateIDs := []string{"kitty", "alacritty", "zsh", "fish", "starship"}
+
+	reg := provider.NewRegistry()
+	reg.Register(provider.NewAPT())
+	reg.Register(provider.NewShell())
+	reg.Register(provider.NewConfig())
+	reg.Register(provider.NewBinaryRelease())
+	reg.Register(provider.NewComposerGlobal())
+	reg.Register(provider.NewFlatpak())
+	reg.Register(provider.NewNPMGlobal())
+
+	r := &runner.Runner{
+		Manifest: m,
+		Registry: reg,
+		Env:      runner.Env{Distro: d, Desktop: system.DetectDesktop()},
+	}
+	plan, err := r.Plan(context.Background(), runner.Selection{Items: candidateIDs})
+	if err != nil {
+		return out
+	}
+	for _, entry := range plan.Entries {
+		out[entry.ItemID] = entry.State.Installed
+	}
+	return out
+}
+
+func markerFor(installed bool) string {
+	if installed {
+		return "✓"
+	}
+	return ""
+}
+
+func pickTerminal(out io.Writer, installed map[string]bool) (tui.OneOfResult, error) {
 	opts := []tui.OneOfOption{
 		{Value: "", Label: "Keep current", Description: "no change"},
-		{Value: "kitty", Label: "Kitty", Description: "GPU, native Wayland, built-in tabs/splits"},
-		{Value: "alacritty", Label: "Alacritty", Description: "leanest GPU-accelerated terminal"},
+		{Value: "kitty", Label: "Kitty", Description: "GPU, native Wayland, built-in tabs/splits", Marker: markerFor(installed["kitty"])},
+		{Value: "alacritty", Label: "Alacritty", Description: "leanest GPU-accelerated terminal", Marker: markerFor(installed["alacritty"])},
 	}
 	return tui.RunOneOf(context.Background(), "Terminal", "Which terminal emulator do you want?", opts, out)
 }
 
-func pickShell(out io.Writer) (tui.OneOfResult, error) {
+func pickShell(out io.Writer, installed map[string]bool) (tui.OneOfResult, error) {
 	opts := []tui.OneOfOption{
 		{Value: "", Label: "Keep current", Description: "no change"},
-		{Value: "zsh", Label: "Zsh", Description: "bash-compatible, large plugin ecosystem"},
-		{Value: "fish", Label: "Fish", Description: "user-friendly, smart autosuggestions"},
+		{Value: "zsh", Label: "Zsh", Description: "bash-compatible, large plugin ecosystem", Marker: markerFor(installed["zsh"])},
+		{Value: "fish", Label: "Fish", Description: "user-friendly, smart autosuggestions", Marker: markerFor(installed["fish"])},
 	}
 	return tui.RunOneOf(context.Background(), "Shell", "Which interactive shell do you want installed?", opts, out)
 }
 
-func pickPrompt(out io.Writer) (tui.OneOfResult, error) {
+func pickPrompt(out io.Writer, installed map[string]bool) (tui.OneOfResult, error) {
 	opts := []tui.OneOfOption{
 		{Value: "", Label: "Keep current", Description: "no change"},
-		{Value: "starship", Label: "Starship", Description: "minimal, fast, cross-shell — starship.rs"},
+		{Value: "starship", Label: "Starship", Description: "minimal, fast, cross-shell — starship.rs", Marker: markerFor(installed["starship"])},
 	}
 	return tui.RunOneOf(context.Background(), "Prompt", "Which prompt do you want installed?", opts, out)
 }

@@ -14,10 +14,15 @@ import (
 //
 // Value is what the caller gets back. A zero-value Value is the
 // idiomatic "keep current / no action" sentinel.
+//
+// Marker is an optional short status glyph (e.g. "✓" or "∅") rendered
+// to the right of the label. Use it to tell the user "you already have
+// this installed" on a re-run.
 type OneOfOption struct {
 	Value       string
 	Label       string
 	Description string
+	Marker      string
 }
 
 // OneOfResult is returned by RunOneOf. Value is the chosen option's Value
@@ -111,7 +116,11 @@ func (m OneOfModel) View() string {
 		} else {
 			label = NormalStyle.Render(label)
 		}
-		b.WriteString(cursor + label + "\n")
+		marker := ""
+		if opt.Marker != "" {
+			marker = "  " + StyleInstalled.Render(opt.Marker)
+		}
+		b.WriteString(cursor + label + marker + "\n")
 		if opt.Description != "" {
 			b.WriteString("    " + DimStyle.Render(opt.Description) + "\n")
 		}
