@@ -9,9 +9,24 @@ import (
 
 // Package-level state for global flags.
 var (
-	verboseFlag bool
-	noColorFlag bool
+	verboseFlag       bool
+	noColorFlag       bool
+	noUpdateCheckFlag bool
 )
+
+// UpdateCheckEnabled reports whether the upstream release-check is
+// allowed to run this invocation. It returns false when either the
+// --no-update-check flag is set or the ONBOARDCTL_NO_UPDATE_CHECK
+// env var is non-empty.
+func UpdateCheckEnabled() bool {
+	if noUpdateCheckFlag {
+		return false
+	}
+	if os.Getenv("ONBOARDCTL_NO_UPDATE_CHECK") != "" {
+		return false
+	}
+	return true
+}
 
 // Verbose reports whether --verbose / -v was passed. Subcommands consult
 // this to dial up log detail without threading flags through every helper.

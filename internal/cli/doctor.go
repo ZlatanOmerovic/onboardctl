@@ -104,6 +104,8 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	fmt.Fprintf(out, "Summary: %d OK · %d info · %d warn · %d fail\n",
 		rep.OKs, rep.Infos, rep.Warns, rep.Fails)
 
+	maybePrintUpdateNotice(out)
+
 	if rep.Fails > 0 {
 		return fmt.Errorf("%d check(s) failed", rep.Fails)
 	}

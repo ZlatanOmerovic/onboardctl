@@ -18,10 +18,12 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version, commit, and build information",
 	Run: func(cmd *cobra.Command, _ []string) {
-		fmt.Fprintf(cmd.OutOrStdout(),
+		out := cmd.OutOrStdout()
+		fmt.Fprintf(out,
 			"onboardctl %s\n  commit:  %s\n  built:   %s\n  go:      %s\n  os/arch: %s/%s\n",
 			Version, Commit, BuildDate, runtime.Version(), runtime.GOOS, runtime.GOARCH,
 		)
+		maybePrintUpdateNotice(out)
 	},
 }
 

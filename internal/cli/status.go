@@ -110,6 +110,7 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	maybePrintUpdateNotice(out)
 	return nil
 }
 
