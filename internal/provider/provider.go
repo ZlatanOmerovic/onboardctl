@@ -52,6 +52,15 @@ type State struct {
 	ProviderUsed string
 }
 
+// Uninstaller is an optional capability for providers that can reverse
+// their own Install. It exists separately from Provider because not every
+// kind can honestly undo — config/shell items may have written arbitrary
+// state that onboardctl cannot generically revert. Callers type-assert
+// for this interface before dispatching a rollback.
+type Uninstaller interface {
+	Uninstall(ctx context.Context, item manifest.Item, p manifest.Provider) error
+}
+
 // Installed is a convenience matcher used in tests and the TUI.
 func (s State) IsInstalled() bool { return s.Installed }
 

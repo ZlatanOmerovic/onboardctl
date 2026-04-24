@@ -97,13 +97,37 @@ func (a *APT) findSnapVersion(ctx context.Context, pkg string) (string, bool) {
 }
 
 // Install implements Provider.
+//
+// When p.Version is set, the install target becomes "pkg=version", which
+// apt-get interprets as an exact version pin. Note that if the version
+// is not present in any configured apt source, the install will fail with
+// apt's standard "Version not found" error — we pass that through.
 func (a *APT) Install(ctx context.Context, item manifest.Item, p manifest.Provider) error {
 	if p.Package == "" {
 		return errors.New("apt provider: provider.package is required")
 	}
-	out, err := a.runner.Run(ctx, "apt-get", "install", "-y", p.Package)
+	target := p.Package
+	if p.Version != "" {
+		target = p.Package + "=" + p.Version
+	}
+	out, err := a.runner.Run(ctx, "apt-get", "install", "-y", target)
 	if err != nil {
 		return fmt.Errorf("apt-get install %s for %q failed: %w\n%s",
+			target, item.Name, err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// Uninstall implements Uninstaller. Runs `apt-get purge -y <pkg>` which
+// removes the package and its config files. Autoremove is not called —
+// we don't want to collateral-damage other hand-installed packages.
+func (a *APT) Uninstall(ctx context.Context, item manifest.Item, p manifest.Provider) error {
+	if p.Package == "" {
+		return errors.New("apt provider: provider.package is required")
+	}
+	out, err := a.runner.Run(ctx, "apt-get", "purge", "-y", p.Package)
+	if err != nil {
+		return fmt.Errorf("apt-get purge %s for %q failed: %w\n%s",
 			p.Package, item.Name, err, strings.TrimSpace(string(out)))
 	}
 	return nil

@@ -115,6 +115,19 @@ func (b *BinaryRelease) Install(ctx context.Context, item manifest.Item, p manif
 	return nil
 }
 
+// Uninstall implements Uninstaller. Removes the binary from InstallDir.
+// A missing file is treated as success (idempotent rollback).
+func (b *BinaryRelease) Uninstall(_ context.Context, _ manifest.Item, p manifest.Provider) error {
+	if p.Binary == "" {
+		return errors.New("binary_release: provider.binary is required")
+	}
+	target := filepath.Join(b.InstallDir, p.Binary)
+	if err := os.Remove(target); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("remove %s: %w", target, err)
+	}
+	return nil
+}
+
 // --- GitHub API types/helpers ---
 
 type githubRelease struct {

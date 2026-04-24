@@ -46,13 +46,34 @@ func (c *ComposerGlobal) Check(ctx context.Context, _ manifest.Item, p manifest.
 }
 
 // Install implements Provider. Calls `composer global require <pkg>`.
+//
+// When p.Version is set, the install target becomes "pkg:version",
+// Composer's version-constraint form (accepts exact versions, ranges,
+// or dev-branch specifiers like "dev-main").
 func (c *ComposerGlobal) Install(ctx context.Context, item manifest.Item, p manifest.Provider) error {
 	if p.Package == "" {
 		return errors.New("composer_global provider: provider.package is required")
 	}
-	out, err := c.runner.Run(ctx, "composer", "global", "require", "--no-interaction", p.Package)
+	target := p.Package
+	if p.Version != "" {
+		target = p.Package + ":" + p.Version
+	}
+	out, err := c.runner.Run(ctx, "composer", "global", "require", "--no-interaction", target)
 	if err != nil {
 		return fmt.Errorf("composer global require %s for %q failed: %w\n%s",
+			target, item.Name, err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// Uninstall implements Uninstaller. Runs `composer global remove <pkg>`.
+func (c *ComposerGlobal) Uninstall(ctx context.Context, item manifest.Item, p manifest.Provider) error {
+	if p.Package == "" {
+		return errors.New("composer_global provider: provider.package is required")
+	}
+	out, err := c.runner.Run(ctx, "composer", "global", "remove", "--no-interaction", p.Package)
+	if err != nil {
+		return fmt.Errorf("composer global remove %s for %q failed: %w\n%s",
 			p.Package, item.Name, err, strings.TrimSpace(string(out)))
 	}
 	return nil

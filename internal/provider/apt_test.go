@@ -96,6 +96,20 @@ func TestAPTInstall(t *testing.T) {
 	}
 }
 
+func TestAPTInstallPinnedVersion(t *testing.T) {
+	f := &fakeRunner{responses: map[string]fakeResp{
+		"apt-get install -y jq=1.7.1-6": {stdout: "Setting up jq..."},
+	}}
+	a := NewAPTWith(f)
+	if err := a.Install(context.Background(), manifest.Item{Name: "jq"},
+		manifest.Provider{Package: "jq", Version: "1.7.1-6"}); err != nil {
+		t.Fatalf("Install error: %v", err)
+	}
+	if len(f.calls) != 1 || f.calls[0] != "apt-get install -y jq=1.7.1-6" {
+		t.Errorf("expected pinned install, got calls: %v", f.calls)
+	}
+}
+
 func TestAPTInstallSurfacesError(t *testing.T) {
 	f := &fakeRunner{responses: map[string]fakeResp{
 		"apt-get install -y bogus": {stdout: "E: Unable to locate package", err: errors.New("exit 100")},

@@ -76,6 +76,7 @@ const (
 type Provider struct {
 	Type    string            `yaml:"type" json:"type"`
 	Package string            `yaml:"package,omitempty" json:"package,omitempty"` // apt
+	Version string            `yaml:"version,omitempty" json:"version,omitempty"` // apt/npm_global/composer_global: optional pin
 	ID      string            `yaml:"id,omitempty" json:"id,omitempty"`           // flatpak
 	Repo    string            `yaml:"repo,omitempty" json:"repo,omitempty"`       // apt (named repo)
 	Source  string            `yaml:"source,omitempty" json:"source,omitempty"`   // binary_release: owner/repo

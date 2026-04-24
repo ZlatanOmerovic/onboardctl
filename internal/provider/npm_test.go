@@ -111,6 +111,30 @@ func TestNPMInstallScopedPackage(t *testing.T) {
 	}
 }
 
+func TestNPMInstallPinnedVersion(t *testing.T) {
+	f := &fakeRunner{responses: map[string]fakeResp{
+		"npm --version":               {stdout: "10.9.2"},
+		"npm install -g yarn@1.22.22": {stdout: "added 1 package"},
+	}}
+	p := NewNPMGlobalWith(f)
+	err := p.Install(context.Background(),
+		manifest.Item{Name: "Yarn"},
+		manifest.Provider{Package: "yarn", Version: "1.22.22"},
+	)
+	if err != nil {
+		t.Fatalf("Install error: %v", err)
+	}
+	var sawPinned bool
+	for _, c := range f.calls {
+		if c == "npm install -g yarn@1.22.22" {
+			sawPinned = true
+		}
+	}
+	if !sawPinned {
+		t.Errorf("expected pinned install call, got: %v", f.calls)
+	}
+}
+
 func TestNPMInstallRequiresNPM(t *testing.T) {
 	f := &fakeRunner{responses: map[string]fakeResp{
 		"npm --version": {err: errors.New("command not found")},

@@ -63,6 +63,28 @@ type Run struct {
 	Selection         []string  `yaml:"selection,omitempty"` // item IDs chosen for this run
 	DryRun            bool      `yaml:"dry_run,omitempty"`
 	OnboardctlVersion string    `yaml:"onboardctl_version,omitempty"`
+
+	// Installed captures per-item provider info for items this run actually
+	// installed (not already-present items, not dry-run entries). Used by
+	// `onboardctl rollback` and `install --rollback-on-failure` to drive
+	// the provider's Uninstaller.
+	Installed []Installed `yaml:"installed,omitempty"`
+
+	// RolledBackAt is set once this run's installs are reverted. Presence
+	// of the timestamp means "already rolled back — don't revert twice".
+	RolledBackAt time.Time `yaml:"rolled_back_at,omitempty"`
+}
+
+// Installed is a minimal provider descriptor, sufficient to reconstruct
+// a manifest.Provider for rollback dispatch. Kept separate from the full
+// provider type so the state file stays readable.
+type Installed struct {
+	ItemID  string `yaml:"item_id"`
+	Kind    string `yaml:"kind"`              // provider type: apt, flatpak, npm_global, composer_global, binary_release
+	Package string `yaml:"package,omitempty"` // apt/npm/composer
+	ID      string `yaml:"id,omitempty"`      // flatpak
+	Binary  string `yaml:"binary,omitempty"`  // binary_release
+	Scope   string `yaml:"scope,omitempty"`   // flatpak: "user" / "system"
 }
 
 // Record is the per-item install history line.

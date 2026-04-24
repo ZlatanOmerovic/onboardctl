@@ -57,6 +57,9 @@ func (n *NPMGlobal) Check(ctx context.Context, _ manifest.Item, p manifest.Provi
 
 // Install implements Provider. Requires the npm binary — if missing,
 // returns an error pointing at the apt-side `nodejs` item.
+//
+// When p.Version is set, the install target becomes "pkg@version", which
+// npm accepts as a specific version, tag, or dist-tag.
 func (n *NPMGlobal) Install(ctx context.Context, item manifest.Item, p manifest.Provider) error {
 	if p.Package == "" {
 		return errors.New("npm_global provider: provider.package is required")
@@ -64,9 +67,28 @@ func (n *NPMGlobal) Install(ctx context.Context, item manifest.Item, p manifest.
 	if _, err := n.runner.Run(ctx, "npm", "--version"); err != nil {
 		return errors.New("npm binary not found — ensure the manifest's 'nodejs' item is selected first")
 	}
-	out, err := n.runner.Run(ctx, "npm", "install", "-g", p.Package)
+	target := p.Package
+	if p.Version != "" {
+		target = p.Package + "@" + p.Version
+	}
+	out, err := n.runner.Run(ctx, "npm", "install", "-g", target)
 	if err != nil {
 		return fmt.Errorf("npm install -g %s for %q failed: %w\n%s",
+			target, item.Name, err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// Uninstall implements Uninstaller. Runs `npm uninstall -g <pkg>`. Version
+// pin is ignored on uninstall because npm removes whichever version is
+// globally installed.
+func (n *NPMGlobal) Uninstall(ctx context.Context, item manifest.Item, p manifest.Provider) error {
+	if p.Package == "" {
+		return errors.New("npm_global provider: provider.package is required")
+	}
+	out, err := n.runner.Run(ctx, "npm", "uninstall", "-g", p.Package)
+	if err != nil {
+		return fmt.Errorf("npm uninstall -g %s for %q failed: %w\n%s",
 			p.Package, item.Name, err, strings.TrimSpace(string(out)))
 	}
 	return nil

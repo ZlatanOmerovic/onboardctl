@@ -100,6 +100,25 @@ func (f *Flatpak) Install(ctx context.Context, item manifest.Item, p manifest.Pr
 	return nil
 }
 
+// Uninstall implements Uninstaller. Honours the same `scope` extra as Install,
+// so user-scope installs are reversed with --user.
+func (f *Flatpak) Uninstall(ctx context.Context, item manifest.Item, p manifest.Provider) error {
+	if p.ID == "" {
+		return errors.New("flatpak provider: provider.id is required")
+	}
+	args := []string{"uninstall", "-y", "--noninteractive"}
+	if scope := p.Extra["scope"]; scope == "user" {
+		args = append(args, "--user")
+	}
+	args = append(args, p.ID)
+	out, err := f.runner.Run(ctx, "flatpak", args...)
+	if err != nil {
+		return fmt.Errorf("flatpak uninstall %s for %q failed: %w\n%s",
+			p.ID, item.Name, err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 // ensureFlathub runs `flatpak remote-add --if-not-exists flathub …` once
 // per Flatpak instance. No-op after the first successful call.
 func (f *Flatpak) ensureFlathub(ctx context.Context) error {

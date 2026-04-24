@@ -71,6 +71,20 @@ func TestComposerGlobalInstall(t *testing.T) {
 	}
 }
 
+func TestComposerGlobalInstallPinnedVersion(t *testing.T) {
+	f := &fakeRunner{responses: map[string]fakeResp{
+		"composer global require --no-interaction laravel/installer:^5.0": {stdout: "OK"},
+	}}
+	c := NewComposerGlobalWith(f)
+	if err := c.Install(context.Background(), manifest.Item{Name: "Laravel"},
+		manifest.Provider{Package: "laravel/installer", Version: "^5.0"}); err != nil {
+		t.Fatalf("Install error: %v", err)
+	}
+	if len(f.calls) != 1 || f.calls[0] != "composer global require --no-interaction laravel/installer:^5.0" {
+		t.Errorf("expected pinned composer require, got: %v", f.calls)
+	}
+}
+
 func TestComposerGlobalInstallSurfacesError(t *testing.T) {
 	f := &fakeRunner{responses: map[string]fakeResp{
 		"composer global require --no-interaction bogus/package": {

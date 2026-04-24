@@ -357,6 +357,108 @@ items:
           - "gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita'"
         check: "test \"$(gsettings get org.gnome.desktop.interface color-scheme)\" = \"'default'\""
 
+  kde-dark-mode:
+    name: KDE dark mode
+    description: "Switch KDE Plasma to Breeze Dark."
+    bundle: desktop-theme
+    providers:
+      - type: shell
+        when:
+          desktop: [kde]
+        apply:
+          - "lookandfeeltool -a org.kde.breezedark.desktop"
+        check: "kreadconfig5 --file kdeglobals --group General --key ColorScheme | grep -qi dark"
+
+  kde-light-mode:
+    name: KDE light mode
+    description: "Switch KDE Plasma to Breeze (light)."
+    bundle: desktop-theme
+    providers:
+      - type: shell
+        when:
+          desktop: [kde]
+        apply:
+          - "lookandfeeltool -a org.kde.breeze.desktop"
+        check: "kreadconfig5 --file kdeglobals --group General --key ColorScheme | grep -qi '^Breeze$'"
+
+  xfce-dark-mode:
+    name: Xfce dark mode
+    description: "Switch Xfce to Adwaita-dark + matching icon theme."
+    bundle: desktop-theme
+    providers:
+      - type: shell
+        when:
+          desktop: [xfce]
+        apply:
+          - "xfconf-query -c xsettings -p /Net/ThemeName -s 'Adwaita-dark'"
+          - "xfconf-query -c xsettings -p /Net/IconThemeName -s 'Adwaita'"
+        check: "test \"$(xfconf-query -c xsettings -p /Net/ThemeName)\" = 'Adwaita-dark'"
+
+  xfce-light-mode:
+    name: Xfce light mode
+    description: "Switch Xfce to Adwaita (light)."
+    bundle: desktop-theme
+    providers:
+      - type: shell
+        when:
+          desktop: [xfce]
+        apply:
+          - "xfconf-query -c xsettings -p /Net/ThemeName -s 'Adwaita'"
+          - "xfconf-query -c xsettings -p /Net/IconThemeName -s 'Adwaita'"
+        check: "test \"$(xfconf-query -c xsettings -p /Net/ThemeName)\" = 'Adwaita'"
+
+  mate-dark-mode:
+    name: MATE dark mode
+    description: "Switch MATE to Yaru-dark."
+    bundle: desktop-theme
+    providers:
+      - type: shell
+        when:
+          desktop: [mate]
+        apply:
+          - "gsettings set org.mate.interface gtk-theme 'Yaru-dark'"
+          - "gsettings set org.mate.Marco.general theme 'Yaru-dark'"
+        check: "test \"$(gsettings get org.mate.interface gtk-theme)\" = \"'Yaru-dark'\""
+
+  mate-light-mode:
+    name: MATE light mode
+    description: "Switch MATE to Yaru (light)."
+    bundle: desktop-theme
+    providers:
+      - type: shell
+        when:
+          desktop: [mate]
+        apply:
+          - "gsettings set org.mate.interface gtk-theme 'Yaru'"
+          - "gsettings set org.mate.Marco.general theme 'Yaru'"
+        check: "test \"$(gsettings get org.mate.interface gtk-theme)\" = \"'Yaru'\""
+
+  cinnamon-dark-mode:
+    name: Cinnamon dark mode
+    description: "Switch Cinnamon to Mint-Y-Dark."
+    bundle: desktop-theme
+    providers:
+      - type: shell
+        when:
+          desktop: [cinnamon]
+        apply:
+          - "gsettings set org.cinnamon.theme name 'Mint-Y-Dark'"
+          - "gsettings set org.cinnamon.desktop.interface gtk-theme 'Mint-Y-Dark'"
+        check: "test \"$(gsettings get org.cinnamon.desktop.interface gtk-theme)\" = \"'Mint-Y-Dark'\""
+
+  cinnamon-light-mode:
+    name: Cinnamon light mode
+    description: "Switch Cinnamon to Mint-Y."
+    bundle: desktop-theme
+    providers:
+      - type: shell
+        when:
+          desktop: [cinnamon]
+        apply:
+          - "gsettings set org.cinnamon.theme name 'Mint-Y'"
+          - "gsettings set org.cinnamon.desktop.interface gtk-theme 'Mint-Y'"
+        check: "test \"$(gsettings get org.cinnamon.desktop.interface gtk-theme)\" = \"'Mint-Y'\""
+
   # ------------------------------ system-essentials (config) ----------------
   system-timezone:
     name: System timezone
@@ -469,7 +571,17 @@ bundles:
   desktop-theme:
     name: Desktop theme
     description: "Dark or light mode for the detected desktop."
-    items: [gnome-dark-mode, gnome-light-mode]
+    items:
+      - gnome-dark-mode
+      - gnome-light-mode
+      - kde-dark-mode
+      - kde-light-mode
+      - xfce-dark-mode
+      - xfce-light-mode
+      - mate-dark-mode
+      - mate-light-mode
+      - cinnamon-dark-mode
+      - cinnamon-light-mode
 
 ###############################################################################
 # Profiles
