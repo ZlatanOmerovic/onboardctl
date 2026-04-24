@@ -17,15 +17,17 @@ import (
 )
 
 var installOpts struct {
-	extras     string
-	profile    string
-	bundle     string
-	items      []string
-	fromExport string
-	skip       []string
-	dryRun     bool
-	assumeYes  bool
-	swapDrift  bool
+	extras            string
+	profile           string
+	bundle            string
+	items             []string
+	fromExport        string
+	skip              []string
+	dryRun            bool
+	assumeYes         bool
+	swapDrift         bool
+	rollbackOnFailure bool
+	offline           bool
 }
 
 var installCmd = &cobra.Command{
@@ -57,6 +59,8 @@ func init() {
 	installCmd.Flags().BoolVar(&installOpts.dryRun, "dry-run", false, "print the plan; don't install")
 	installCmd.Flags().BoolVarP(&installOpts.assumeYes, "yes", "y", false, "apply changes (without --yes and without --dry-run, install defaults to dry-run)")
 	installCmd.Flags().BoolVar(&installOpts.swapDrift, "swap-drift", false, "replace foreign-installed versions (e.g. snap) with the manifest-preferred one")
+	installCmd.Flags().BoolVar(&installOpts.rollbackOnFailure, "rollback-on-failure", false, "on first item failure, undo this run's successful installs")
+	installCmd.Flags().BoolVar(&installOpts.offline, "offline", false, "refuse items whose provider touches the network; useful for air-gapped re-runs")
 	rootCmd.AddCommand(installCmd)
 }
 
@@ -171,7 +175,13 @@ func runInstall(cmd *cobra.Command, _ []string) error {
 		},
 	}
 
-	opts := runner.Options{DryRun: effectiveDry, Profile: installOpts.profile, SwapDrift: installOpts.swapDrift}
+	opts := runner.Options{
+		DryRun:            effectiveDry,
+		Profile:           installOpts.profile,
+		SwapDrift:         installOpts.swapDrift,
+		RollbackOnFailure: installOpts.rollbackOnFailure,
+		Offline:           installOpts.offline,
+	}
 
 	fmt.Fprintln(out, "Plan:")
 	sum, err := r.Run(context.Background(), sel, opts)

@@ -261,7 +261,14 @@ func probeInitCandidates(m *manifest.Manifest, d system.Distro) map[string]bool 
 	if m == nil {
 		return out
 	}
-	candidateIDs := []string{"kitty", "alacritty", "zsh", "fish", "starship", "gnome-dark-mode", "gnome-light-mode"}
+	candidateIDs := []string{
+		"kitty", "alacritty", "zsh", "fish", "starship",
+		"gnome-dark-mode", "gnome-light-mode",
+		"kde-dark-mode", "kde-light-mode",
+		"xfce-dark-mode", "xfce-light-mode",
+		"mate-dark-mode", "mate-light-mode",
+		"cinnamon-dark-mode", "cinnamon-light-mode",
+	}
 
 	reg := provider.NewRegistry()
 	reg.Register(provider.NewAPT())
@@ -333,22 +340,46 @@ func pickPrompt(out io.Writer, installed map[string]bool) (tui.OneOfResult, erro
 }
 
 // pickThemeForDesktop surfaces dark/light options gated by the detected
-// desktop environment. Non-GNOME desktops get a silent no-op (returns
-// the zero-value "keep current" result) rather than bogus picks that
-// wouldn't apply on this machine.
+// desktop environment. Unsupported desktops (Sway, Hyprland, Pantheon,
+// LXQt, Budgie, or unknown) get a silent no-op — the zero-value result
+// tells the caller "no theme pick".
 func pickThemeForDesktop(out io.Writer, installed map[string]bool) (tui.OneOfResult, error) {
 	de := system.DetectDesktop()
-	if de != system.DesktopGNOME {
-		// Skip the picker; other DEs aren't wired yet. Caller treats
-		// zero-value as "no theme pick — nothing to install".
+	dark, light, descDark, descLight, ok := themeItemsForDesktop(de)
+	if !ok {
 		return tui.OneOfResult{Value: "", Label: "Keep current"}, nil
 	}
 	opts := []tui.OneOfOption{
 		{Value: "", Label: "Keep current", Description: "no change"},
-		{Value: "gnome-dark-mode", Label: "Dark", Description: "prefer-dark + Adwaita-dark", Marker: markerFor(installed["gnome-dark-mode"])},
-		{Value: "gnome-light-mode", Label: "Light", Description: "default color-scheme + Adwaita", Marker: markerFor(installed["gnome-light-mode"])},
+		{Value: dark, Label: "Dark", Description: descDark, Marker: markerFor(installed[dark])},
+		{Value: light, Label: "Light", Description: descLight, Marker: markerFor(installed[light])},
 	}
 	return tui.RunOneOf(context.Background(), "Theme", "Dark or light?", opts, out)
+}
+
+// themeItemsForDesktop maps the detected desktop to the two manifest item
+// IDs that apply dark / light mode for it. Returns ok=false when we
+// haven't wired support for this desktop — the init wizard then skips
+// the theme step silently.
+func themeItemsForDesktop(de system.Desktop) (dark, light, descDark, descLight string, ok bool) {
+	switch de {
+	case system.DesktopGNOME:
+		return "gnome-dark-mode", "gnome-light-mode",
+			"prefer-dark + Adwaita-dark", "default color-scheme + Adwaita", true
+	case system.DesktopKDE:
+		return "kde-dark-mode", "kde-light-mode",
+			"Breeze Dark via lookandfeeltool", "Breeze (light) via lookandfeeltool", true
+	case system.DesktopXfce:
+		return "xfce-dark-mode", "xfce-light-mode",
+			"Adwaita-dark via xfconf-query", "Adwaita (light) via xfconf-query", true
+	case system.DesktopMATE:
+		return "mate-dark-mode", "mate-light-mode",
+			"Yaru-dark via gsettings", "Yaru (light) via gsettings", true
+	case system.DesktopCinnamon:
+		return "cinnamon-dark-mode", "cinnamon-light-mode",
+			"Mint-Y-Dark via gsettings", "Mint-Y via gsettings", true
+	}
+	return "", "", "", "", false
 }
 
 func executeInit(
