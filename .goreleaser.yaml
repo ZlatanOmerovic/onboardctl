@@ -18,9 +18,11 @@ before:
   hooks:
     - go mod tidy
     # Generate shell completions (bash / zsh / fish) and a manpage per
-    # subcommand. Archive files: blocks below pick these up so every
-    # release tarball ships them alongside the binary.
-    - go run ./cmd/gen dist/extras
+    # subcommand. Writes into .generated/ rather than dist/ because
+    # goreleaser verifies dist/ is empty after running before-hooks and
+    # before writing its own artefacts. Archive files: blocks below pick
+    # these up so every release tarball ships them alongside the binary.
+    - go run ./cmd/gen .generated
 
 builds:
   - id: onboardctl
@@ -53,9 +55,9 @@ archives:
       - LICENSE
       - README.md
       - CHANGELOG.md
-      - src: 'dist/extras/completions/*'
+      - src: '.generated/completions/*'
         dst: completions
-      - src: 'dist/extras/man/*'
+      - src: '.generated/man/*'
         dst: manpages
 
 checksum:

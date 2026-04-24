@@ -10,7 +10,7 @@ vendor/
 coverage.*
 
 # Generated at release time (shell completions + manpages)
-/dist/extras/
+/.generated/
 
 # Editor / OS cruft
 .vscode/
